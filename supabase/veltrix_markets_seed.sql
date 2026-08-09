@@ -1,6 +1,6 @@
 -- VELTRIX canonical market seed
 -- Source: Supabase Snippet Untitled query 48(1).csv
--- 62 exact market names; no inferred aliases.
+-- 62 exact market names plus explicit approved aliases only.
 
 insert into public.veltrix_markets (market_key, market_name, active)
 values
@@ -68,6 +68,33 @@ values
   ('market_062', 'ฮานอยอาเซียน', true)
 on conflict do nothing;
 
--- Verify
+-- Explicit aliases approved from RESULTS import UNKNOWN review.
+with alias_seed(alias, canonical_name) as (
+  values
+    ('ดาวโจนส์ VIP', 'หุ้นดาวโจนส์ VIP'),
+    ('ดาวโจนส์สตาร์', 'หุ้นดาวโจนส์สตาร์'),
+    ('เกาหลี VIP', 'หุ้นเกาหลี VIP'),
+    ('จีน VIP บ่าย', 'หุ้นจีน VIP บ่าย'),
+    ('สิงคโปร์ VIP', 'หุ้นสิงคโปร์ VIP'),
+    ('อังกฤษ VIP', 'หุ้นอังกฤษ VIP'),
+    ('รัสเซีย VIP', 'หุ้นรัสเซีย VIP'),
+    ('เยอรมัน VIP', 'หุ้นเยอรมัน VIP')
+)
+insert into public.veltrix_market_aliases (market_id, alias, active)
+select m.id, s.alias, true
+from alias_seed s
+join public.veltrix_markets m
+  on lower(trim(m.market_name)) = lower(trim(s.canonical_name))
+where m.active = true
+on conflict do nothing;
+
+-- Verify canonical markets
 select count(*) as veltrix_market_count from public.veltrix_markets where active = true;
 select market_key, market_name from public.veltrix_markets where active = true order by market_key;
+
+-- Verify aliases
+select a.alias, m.market_name as canonical_market, a.active
+from public.veltrix_market_aliases a
+join public.veltrix_markets m on m.id = a.market_id
+where a.active = true
+order by a.alias;
