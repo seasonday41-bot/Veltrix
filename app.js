@@ -86,29 +86,96 @@ function pair2Engine(rows, rank, rud){
 
 function tripleKey(s){ return [...s].sort().join(''); }
 function pairKeysOfTriple(t){ return [canonPair(t[0]+t[1]),canonPair(t[0]+t[2]),canonPair(t[1]+t[2])]; }
+function tripleKind(t){ const n=new Set([...t]).size; return n===3?'distinct':n===2?'double':'triple'; }
+function repeatedDigit(t){
+  const c={}; for(const d of t)c[d]=(c[d]||0)+1;
+  return Object.keys(c).find(d=>c[d]>=2)||null;
+}
+
+// Pair3 V2: generate only from the five TOP Pair2 supports, then fuse one ranked digit.
+// This keeps Pair3 tied to top-pair evidence and prevents Rud/repeat bonuses from
+// dominating the whole 5-pick set.
 function pair3Engine(rows, rank, rud, pair2top){
-  const dna={}; rows.forEach((r,i)=>{const k=tripleKey(r.top3); dna[k]=(dna[k]||0)+(i<3?3-i:1);});
-  const pairSupport=new Set(pair2top.map(canonPair));
-  const hasRecentDouble=rows.slice(0,5).some(r=>new Set(r.top3).size<3);
+  const pairWeight=new Map(pair2top.map((p,i)=>[canonPair(p),(pair2top.length-i)/pair2top.length]));
+  const pairSupport=new Set(pairWeight.keys());
+  const dna={};
+  rows.forEach((r,i)=>{
+    const k=tripleKey(r.top3);
+    const w=i===0?4:i===1?3:i===2?2:1;
+    dna[k]=(dna[k]||0)+w;
+  });
+  const recentTopKeys=new Set(rows.slice(0,3).map(r=>tripleKey(r.top3)));
+  const hasRecentDouble=rows.slice(0,10).some(r=>tripleKind(r.top3)==='double');
+  const hasRecentTriple=rows.slice(0,10).some(r=>tripleKind(r.top3)==='triple');
   const maxDigit=Math.max(...Object.values(rank.score),1);
-  const candidates=[];
-  for(let n=0;n<1000;n++){
-    const t=String(n).padStart(3,'0');
-    const ds=[...t];
-    const digitScore=ds.reduce((s,d)=>s+rank.score[d]/maxDigit,0)/3;
-    const pScore=pairKeysOfTriple(t).filter(p=>pairSupport.has(p)).length/3;
-    const dnaScore=Math.min((dna[tripleKey(t)]||0)/3,1);
-    const recentScore=rows.slice(0,3).some(r=>tripleKey(r.top3)===tripleKey(t))?1:0;
-    const rudScore=ds.includes(rud.top)?1:0;
-    const repeat=new Set(ds).size<3;
-    const repeatScore=repeat&&hasRecentDouble?1:0;
-    const score=.30*digitScore+.25*pScore+.10*dnaScore+.10*recentScore+.15*rudScore+.10*repeatScore;
-    candidates.push({t,score,key:tripleKey(t)});
+  const byKey=new Map();
+
+  for(const basePair of pair2top){
+    const baseKey=canonPair(basePair);
+    for(const d of rank.ranked){
+      const t=`${basePair}${d}`;
+      const key=tripleKey(t);
+      const kind=tripleKind(t);
+      if(kind==='triple'&&!hasRecentTriple)continue;
+
+      const ds=[...t];
+      const supportedPairs=pairKeysOfTriple(t).filter(p=>pairSupport.has(p));
+      const pairScore=Math.max(0,...supportedPairs.map(p=>pairWeight.get(p)||0));
+      const fusionScore=supportedPairs.length/3;
+      const digitScore=ds.reduce((s,x)=>s+(rank.score[x]||0)/maxDigit,0)/3;
+      const dnaScore=Math.min((dna[key]||0)/4,1);
+      const recentMatch=recentTopKeys.has(key)?1:0;
+      const rudScore=ds.includes(rud.top)?1:0;
+      const repeatEvidence=kind==='double'&&hasRecentDouble?1:0;
+      const score=.30*pairScore+.20*fusionScore+.25*digitScore+.10*dnaScore+.05*recentMatch+.05*rudScore+.05*repeatEvidence;
+      const item={t,key,kind,score,baseKey,repeatDigit:repeatedDigit(t)};
+      const old=byKey.get(key);
+      if(!old||score>old.score)byKey.set(key,item);
+    }
   }
-  candidates.sort((a,b)=>b.score-a.score||(+a.t)-(+b.t));
-  const out=[],seen=new Set();
-  for(const c of candidates){ if(!seen.has(c.key)){seen.add(c.key);out.push(c.t);} if(out.length===5)break; }
-  return out;
+
+  const candidates=[...byKey.values()].sort((a,b)=>b.score-a.score||(+a.t)-(+b.t));
+  const out=[],seen=new Set(),pairUse=new Map(),repeatDigits=new Set();
+  let repeatCount=0,tripleCount=0;
+
+  const accept=(c,strict=true)=>{
+    if(seen.has(c.key))return false;
+    if(strict&&(pairUse.get(c.baseKey)||0)>=2)return false;
+    if(c.kind!=='distinct'){
+      if(strict&&repeatCount>=2)return false;
+      if(strict&&c.repeatDigit&&repeatDigits.has(c.repeatDigit))return false;
+      if(c.kind==='triple'&&tripleCount>=1)return false;
+    }
+    seen.add(c.key); out.push(c.t);
+    pairUse.set(c.baseKey,(pairUse.get(c.baseKey)||0)+1);
+    if(c.kind!=='distinct'){
+      repeatCount++;
+      if(c.repeatDigit)repeatDigits.add(c.repeatDigit);
+      if(c.kind==='triple')tripleCount++;
+    }
+    return true;
+  };
+
+  // Pass 1: prefer diversity — at most 2 repeat-pattern picks and one per repeated digit.
+  for(const c of candidates){ if(accept(c,true)&&out.length===5)break; }
+  // Pass 2: if a market has unusually repeat-heavy Pair2 support, relax pair-use only.
+  if(out.length<5){
+    for(const c of candidates){
+      if(seen.has(c.key))continue;
+      if(c.kind==='triple'&&tripleCount>=1)continue;
+      if(c.kind!=='distinct'&&c.repeatDigit&&repeatDigits.has(c.repeatDigit))continue;
+      if(accept(c,false)&&out.length===5)break;
+    }
+  }
+  // Final deterministic fill; still no duplicate triple key.
+  if(out.length<5){
+    for(const c of candidates){
+      if(seen.has(c.key))continue;
+      seen.add(c.key); out.push(c.t);
+      if(out.length===5)break;
+    }
+  }
+  return out.slice(0,5);
 }
 
 function calculate(rows){
