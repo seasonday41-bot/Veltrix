@@ -31,12 +31,14 @@ async function inspect(){
 
 async function save(){
   const raw_text=$('rawText').value.trim(); if(!raw_text)return;
-  $('saveResultsBtn').disabled=true; $('saveResultStatus').textContent='กำลังบันทึกและตรวจ Forward...';
+  $('saveResultsBtn').disabled=true; $('saveResultStatus').textContent='กำลัง AUTO LOCK → บันทึกผล → ตรวจ Forward...';
   try{
     const r=await fetch('/api/import-results',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({raw_text,dry_run:false})});
     const j=await r.json(); if(!r.ok)throw new Error(j.error||'บันทึกไม่ได้'); renderPreview(j);
     const settled=j.settled_count||0;
-    $('saveResultStatus').textContent=`บันทึกใหม่ ${j.added_count||0} • ซ้ำ ${j.duplicate_count||0} • Forward ตรวจแล้ว ${settled}`;
+    const autoMarkets=j.auto_locked_market_count||0;
+    const autoSnapshots=j.auto_locked_snapshot_count||0;
+    $('saveResultStatus').textContent=`บันทึกใหม่ ${j.added_count||0} • AUTO LOCK ${autoMarkets} ตลาด / ${autoSnapshots} Snapshot • Forward ${settled}`;
   }catch(e){ $('saveResultStatus').textContent=e.message; }
   finally{$('saveResultsBtn').disabled=false;}
 }
