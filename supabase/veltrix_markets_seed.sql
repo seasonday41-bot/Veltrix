@@ -1,6 +1,6 @@
 -- VELTRIX canonical market seed
--- Source: Supabase Snippet Untitled query 48(1).csv
--- 62 exact market names plus explicit approved aliases only.
+-- 60 real active markets. market_040 / market_041 are retained only as inactive
+-- legacy duplicate labels for Hong Kong VIP and must never receive results.
 
 insert into public.veltrix_markets (market_key, market_name, active)
 values
@@ -43,8 +43,8 @@ values
   ('market_037', 'หุ้นรัสเซีย VIP', true),
   ('market_038', 'หุ้นสิงคโปร์ VIP', true),
   ('market_039', 'หุ้นอังกฤษ VIP', true),
-  ('market_040', 'หุ้นฮั่งเส็ง VIP เช้า', true),
-  ('market_041', 'หุ้นฮั่งเส็ง VIP บ่าย', true),
+  ('market_040', 'หุ้นฮั่งเส็ง VIP เช้า', false),
+  ('market_041', 'หุ้นฮั่งเส็ง VIP บ่าย', false),
   ('market_042', 'ออมสิน', true),
   ('market_043', 'อังกฤษ', true),
   ('market_044', 'อินเดีย', true),
@@ -66,35 +66,29 @@ values
   ('market_060', 'ฮานอยสตาร์', true),
   ('market_061', 'ฮานอยสามัคคี', true),
   ('market_062', 'ฮานอยอาเซียน', true)
+on conflict (market_key) do update
+set market_name=excluded.market_name,
+    active=excluded.active,
+    updated_at=now();
+
+-- Hong Kong VIP duplicate labels are aliases of the real markets.
+delete from public.veltrix_market_aliases
+where market_id in (select id from public.veltrix_markets where market_key in ('market_040','market_041'))
+   or lower(trim(alias)) in (lower('หุ้นฮั่งเส็ง VIP เช้า'),lower('หุ้นฮั่งเส็ง VIP บ่าย'));
+
+insert into public.veltrix_market_aliases (market_id,alias,active)
+select m.id,x.alias,true
+from (values
+  ('market_046','หุ้นฮั่งเส็ง VIP เช้า'),
+  ('market_047','หุ้นฮั่งเส็ง VIP บ่าย')
+) x(market_key,alias)
+join public.veltrix_markets m on m.market_key=x.market_key
 on conflict do nothing;
 
--- Explicit aliases approved from RESULTS import UNKNOWN review.
-with alias_seed(alias, canonical_name) as (
-  values
-    ('ดาวโจนส์ VIP', 'หุ้นดาวโจนส์ VIP'),
-    ('ดาวโจนส์สตาร์', 'หุ้นดาวโจนส์สตาร์'),
-    ('เกาหลี VIP', 'หุ้นเกาหลี VIP'),
-    ('จีน VIP บ่าย', 'หุ้นจีน VIP บ่าย'),
-    ('สิงคโปร์ VIP', 'หุ้นสิงคโปร์ VIP'),
-    ('อังกฤษ VIP', 'หุ้นอังกฤษ VIP'),
-    ('รัสเซีย VIP', 'หุ้นรัสเซีย VIP'),
-    ('เยอรมัน VIP', 'หุ้นเยอรมัน VIP')
-)
-insert into public.veltrix_market_aliases (market_id, alias, active)
-select m.id, s.alias, true
-from alias_seed s
-join public.veltrix_markets m
-  on lower(trim(m.market_name)) = lower(trim(s.canonical_name))
-where m.active = true
-on conflict do nothing;
+select count(*) as veltrix_active_market_count
+from public.veltrix_markets
+where active=true; -- expected 60
 
--- Verify canonical markets
-select count(*) as veltrix_market_count from public.veltrix_markets where active = true;
-select market_key, market_name from public.veltrix_markets where active = true order by market_key;
-
--- Verify aliases
-select a.alias, m.market_name as canonical_market, a.active
-from public.veltrix_market_aliases a
-join public.veltrix_markets m on m.id = a.market_id
-where a.active = true
-order by a.alias;
+select market_key,market_name,active
+from public.veltrix_markets
+order by market_key;
