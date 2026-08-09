@@ -49,26 +49,39 @@ export default async function handler(req,res){
     for(const r of rows||[]){if(!byMarket.has(r.market_id))byMarket.set(r.market_id,[]);const a=byMarket.get(r.market_id);if(a.length<20)a.push(r);}
     const results=[],skipped=[];let totalCases=0;const global={A:emptyAgg(),B:emptyAgg()};
     for(const market of markets||[]){
-      const hist=byMarket.get(market.id)||[],maxCases=Math.max(0,Math.min(15,hist.length-5));
-      if(!maxCases){skipped.push({market_key:market.market_key,market_name:market.market_name,history_rows:hist.length,reason:'need at least 6 results'});continue;}
-      const agg={A:emptyAgg(),B:emptyAgg()};let cases=0;
-      for(let t=0;t<maxCases;t++){
-        const actual=hist[t],prior=hist.slice(t+1,t+11);if(prior.length<5)continue;
-        const out=calculateVeltrix(prior);if(!out?.A||!out?.B)continue;
-        for(const mode of ['A','B']){const ev=evaluate(out[mode],actual);addAgg(agg[mode],ev);addAgg(global[mode],ev);}cases++;totalCases++;
-      }
-      if(!cases){skipped.push({market_key:market.market_key,market_name:market.market_name,history_rows:hist.length,reason:'no valid walk-forward cases'});continue;}
-      let winsA=0,winsB=0,ties=0;for(const k of KPI){if(agg.A[k]>agg.B[k])winsA++;else if(agg.B[k]>agg.A[k])winsB++;else ties++;}
+      const hist=byMarket.get(market.id)||[];
+      if(hist.length<6){skipped.push({market_key:market.market_key,market_name:market.market_name,history_rows:hist.length,reason:'need latest actual + at least 5 prior results'});continue;}
+      const actual=hist[0],prior=hist.slice(1,11);
+      const out=calculateVeltrix(prior,{targetDate:actual.draw_date});
+      if(!out?.A||!out?.B){skipped.push({market_key:market.market_key,market_name:market.market_name,history_rows:hist.length,reason:'no valid latest-draw backtest'});continue;}
+      const agg={A:emptyAgg(),B:emptyAgg()};
+      for(const mode of ['A','B']){const ev=evaluate(out[mode],actual);addAgg(agg[mode],ev);addAgg(global[mode],ev);}
+      totalCases++;
+      let winsA=0,winsB=0,ties=0;
+      for(const k of KPI){if(agg.A[k]>agg.B[k])winsA++;else if(agg.B[k]>agg.A[k])winsB++;else ties++;}
       const totalHitsA=KPI.reduce((s,k)=>s+agg.A[k],0),totalHitsB=KPI.reduce((s,k)=>s+agg.B[k],0);
       const winner=totalHitsA>totalHitsB?'A':totalHitsB>totalHitsA?'B':'TIE';
-      const edge=Number(((totalHitsA-totalHitsB)/(cases*KPI.length)*100).toFixed(2));
-      results.push({market_key:market.market_key,market_name:market.market_name,cases,winner,edge_pp:edge,kpi_wins:{A:winsA,B:winsB,tie:ties},score:{A:totalHitsA,B:totalHitsB,A_pct:pct(totalHitsA,cases*KPI.length),B_pct:pct(totalHitsB,cases*KPI.length)},A:Object.fromEntries(KPI.map(k=>[k,{hits:agg.A[k],pct:pct(agg.A[k],cases)}])),B:Object.fromEntries(KPI.map(k=>[k,{hits:agg.B[k],pct:pct(agg.B[k],cases)}]))});
+      const edge=Number(((totalHitsA-totalHitsB)/KPI.length*100).toFixed(2));
+      results.push({
+        market_key:market.market_key,market_name:market.market_name,cases:1,test_draw_date:actual.draw_date,
+        actual:{top3:actual.top3,bottom2:actual.bottom2},winner,edge_pp:edge,
+        kpi_wins:{A:winsA,B:winsB,tie:ties},
+        score:{A:totalHitsA,B:totalHitsB,A_pct:pct(totalHitsA,KPI.length),B_pct:pct(totalHitsB,KPI.length)},
+        A:Object.fromEntries(KPI.map(k=>[k,{hits:agg.A[k],pct:agg.A[k]?100:0}])),
+        B:Object.fromEntries(KPI.map(k=>[k,{hits:agg.B[k],pct:agg.B[k]?100:0}])),
+        calendar:{target_date:out.A.targetDate,day_win:out.A.dayWin,year_win:out.A.yearWin}
+      });
     }
     results.sort((a,b)=>Math.abs(b.edge_pp)-Math.abs(a.edge_pp)||a.market_name.localeCompare(b.market_name,'th'));
     const counts={A:results.filter(x=>x.winner==='A').length,B:results.filter(x=>x.winner==='B').length,TIE:results.filter(x=>x.winner==='TIE').length};
-    const groups={A:results.filter(x=>x.winner==='A').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:x.cases})),B:results.filter(x=>x.winner==='B').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:x.cases})),TIE:results.filter(x=>x.winner==='TIE').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:x.cases}))};
-    const base={engine:'MODE_A_B_SHARED_PIPELINE_WINDOW_ONLY_V7',basis:'latest 20 actual occurrences per market; walk-forward up to 15 cases/market',source_result_rows:rows.length,kpis:KPI,active_market_count:(markets||[]).length,market_count:results.length,total_cases:totalCases,winner_counts:counts,groups,skipped,global:{A:Object.fromEntries(KPI.map(k=>[k,{hits:global.A[k],pct:pct(global.A[k],totalCases)}])),B:Object.fromEntries(KPI.map(k=>[k,{hits:global.B[k],pct:pct(global.B[k],totalCases)}]))}};
+    const groups={A:results.filter(x=>x.winner==='A').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:1})),B:results.filter(x=>x.winner==='B').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:1})),TIE:results.filter(x=>x.winner==='TIE').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:1}))};
+    const base={
+      engine:'MODE_A_B_SHARED_PIPELINE_DAY_YEAR_BONUS_V8',
+      basis:'latest actual occurrence only per market; prediction uses prior occurrences only',
+      source_result_rows:rows.length,kpis:KPI,active_market_count:(markets||[]).length,market_count:results.length,total_cases:totalCases,
+      winner_counts:counts,groups,skipped,
+      global:{A:Object.fromEntries(KPI.map(k=>[k,{hits:global.A[k],pct:pct(global.A[k],totalCases)}])),B:Object.fromEntries(KPI.map(k=>[k,{hits:global.B[k],pct:pct(global.B[k],totalCases)}]))}
+    };
     return json(res,200,summaryOnly?base:{...base,markets:results});
-  }catch(e){return json(res,500,{error:e.message,detail:e.data||null});
-  }
+  }catch(e){return json(res,500,{error:e.message,detail:e.data||null});}
 }
