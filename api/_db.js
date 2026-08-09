@@ -2,7 +2,15 @@ function env(){
   const url=process.env.SUPABASE_URL;
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!url||!key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-  return {url:url.replace(/\/$/,''),key};
+  return {url:url.replace(/\/$/,''),key:key.trim()};
+}
+
+function authHeaders(key){
+  const h={apikey:key};
+  if(!key.startsWith('sb_secret_')&&!key.startsWith('sb_publishable_')){
+    h.Authorization=`Bearer ${key}`;
+  }
+  return h;
 }
 
 export async function db(path,{method='GET',body,prefer,headers={}}={}){
@@ -10,8 +18,7 @@ export async function db(path,{method='GET',body,prefer,headers={}}={}){
   const r=await fetch(`${url}/rest/v1/${path}`,{
     method,
     headers:{
-      apikey:key,
-      Authorization:`Bearer ${key}`,
+      ...authHeaders(key),
       'Content-Type':'application/json',
       ...(prefer?{Prefer:prefer}:{}),
       ...headers
