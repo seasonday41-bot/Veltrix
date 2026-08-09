@@ -1,0 +1,15 @@
+import {db,json,allow} from './_db.js';
+
+export default async function handler(req,res){
+  allow(res,'GET');
+  if(req.method!=='GET')return json(res,405,{error:'Method not allowed'});
+  try{
+    const marketKey=String(req.query?.market_key||'').trim();
+    if(!marketKey)return json(res,400,{error:'market_key is required'});
+    const mk=encodeURIComponent(marketKey);
+    const markets=await db(`veltrix_markets?select=id,market_key,market_name,country_code&market_key=eq.${mk}&active=eq.true&limit=1`);
+    if(!markets?.length)return json(res,404,{error:'ไม่พบตลาดนี้ใน VELTRIX'});
+    const history=await db(`veltrix_latest_10?select=id,market_id,market_key,market_name,draw_date,top3,bottom2,rn&market_key=eq.${mk}&order=rn.asc`);
+    return json(res,200,{market:markets[0],history:history||[]});
+  }catch(e){return json(res,500,{error:e.message});}
+}
