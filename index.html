@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0f14" />
+  <title>VELTRIX — Adaptive Number Intelligence</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="brand-row">
+      <div>
+        <p class="eyebrow">ADAPTIVE NUMBER INTELLIGENCE</p>
+        <h1>VELTRIX</h1>
+      </div>
+      <a class="icon-link" href="result.html" aria-label="ส่งผลงวดถัดไป">ผล</a>
+    </header>
+
+    <section class="card input-card">
+      <label class="field-label" for="market">ชื่อตลาด</label>
+      <input id="market" class="text-input" placeholder="เช่น ลาวสันติภาพ" autocomplete="off" />
+
+      <label class="field-label" for="history">ย้อนหลังล่าสุด → เก่าสุด</label>
+      <textarea id="history" class="history-input" rows="8" placeholder="453-11\n289-30\n451-78\n957-20\n596-23"></textarea>
+      <p class="hint">วางได้ 5–20 งวด รูปแบบ 3 ตัวบน-2 ตัวล่าง ต่อบรรทัด</p>
+
+      <button id="calculateBtn" class="primary-btn" type="button">คำนวณ</button>
+    </section>
+
+    <section id="resultPanel" class="result-panel hidden">
+      <div class="mode-switch" role="group" aria-label="เลือกโหมด">
+        <button class="mode-btn active" data-mode="B" type="button">MODE B</button>
+        <button class="mode-btn" data-mode="A" type="button">MODE A</button>
+      </div>
+
+      <section class="hero-card card">
+        <div class="hero-head">
+          <div>
+            <p class="eyebrow" id="modeLabel">MODE B · MEMORY MAIN</p>
+            <h2>WIN</h2>
+          </div>
+          <span id="poolBadge" class="badge">B · 0</span>
+        </div>
+        <div id="winDigits" class="win-digits">—</div>
+        <div class="reserve-row">Reserve <span id="reserveDigit" class="reserve-pill">—</span></div>
+      </section>
+
+      <section class="card compact-card">
+        <div id="rudNormal" class="rud-grid">
+          <div><span class="mini-label">รูดบน</span><strong id="rudTop">—</strong></div>
+          <div><span class="mini-label">รูดล่าง</span><strong id="rudBottom">—</strong></div>
+        </div>
+        <div id="rudShared" class="hidden">
+          <div class="shared-rud"><span class="mini-label">รูดบน/ล่าง</span><strong id="rudSharedDigit">—</strong></div>
+          <div class="support-rud"><span class="mini-label">ตัวเสริม</span><strong id="rudSupportDigit">—</strong></div>
+        </div>
+        <div id="challengerRow" class="challenger-row hidden">RUD CHALLENGER <strong id="challengerDigit">—</strong></div>
+      </section>
+
+      <section class="card output-card">
+        <div class="section-title">เจาะ 2</div>
+        <div id="pair2" class="chip-wrap"></div>
+      </section>
+
+      <section class="card output-card">
+        <div class="section-title">เจาะ 3</div>
+        <div id="pair3" class="chip-wrap triple-wrap"></div>
+      </section>
+
+      <section class="card compare-card">
+        <button id="compareToggle" class="ghost-btn" type="button">ดู MODE A / B</button>
+        <div id="compareBody" class="compare-body hidden"></div>
+      </section>
+
+      <div class="action-grid">
+        <button id="copyBtn" class="secondary-btn" type="button">COPY ผล</button>
+        <button id="snapshotBtn" class="primary-btn" type="button">บันทึก Snapshot</button>
+      </div>
+    </section>
+
+    <nav class="bottom-nav" aria-label="หน้าหลัก">
+      <a class="nav-item active" href="index.html">วิเคราะห์</a>
+      <a class="nav-item" href="result.html">ส่งผล</a>
+    </nav>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
