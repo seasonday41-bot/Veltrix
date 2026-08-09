@@ -2,39 +2,120 @@
 <html lang="th">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#02070d" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#03030b" />
   <meta name="color-scheme" content="dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>VELTRIX</title>
   <style>
-    :root{--bg:#02070d;--panel:rgba(5,18,30,.80);--line:rgba(92,190,247,.38);--text:#f3f9ff;--muted:#98b5ca;--cyan:#52d2ff;--cyan2:#d9f6ff}
-    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#02070d;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
-    body{min-height:100vh;background-image:radial-gradient(circle at 12% 5%,rgba(42,132,190,.45) 0 14%,rgba(54,184,244,.22) 15%,transparent 22%),radial-gradient(ellipse at 85% 22%,rgba(0,115,190,.20),transparent 38%),radial-gradient(circle at 15% 22%,rgba(255,255,255,.85) 0 1px,transparent 1.5px),radial-gradient(circle at 78% 18%,rgba(117,213,255,.8) 0 1px,transparent 1.5px),radial-gradient(circle at 50% 52%,rgba(255,255,255,.5) 0 1px,transparent 1.5px),linear-gradient(180deg,#02070d,#03131f 46%,#02070d);background-attachment:fixed}
-    .app{width:min(100%,560px);margin:0 auto;padding:18px 14px 108px}.brand{padding:16px 5px 22px}.brand h1{margin:0;font-size:36px;letter-spacing:6px;font-weight:900;background:linear-gradient(#fff,#caeeff 55%,#65d3ff);-webkit-background-clip:text;color:transparent;text-shadow:0 0 24px rgba(70,195,255,.18)}.brand p{margin:7px 0 0;color:#a8c0d1;font-size:14px;letter-spacing:.7px}
-    .card{background:linear-gradient(180deg,rgba(7,28,45,.82),rgba(3,15,25,.80));border:1px solid var(--line);border-radius:20px;padding:15px;margin-bottom:12px;box-shadow:0 14px 36px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.04);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px)}
-    .label,.section-title{color:#a9c4d6;font-size:13px;letter-spacing:.8px;margin-bottom:9px}.select{width:100%;height:50px;border:1px solid rgba(94,190,245,.42);border-radius:15px;background:rgba(2,12,21,.88);color:#f4fbff;padding:0 14px;font-size:16px}.status{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.45}
-    .mode-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mode-btn,.btn,.nav-btn{border:1px solid rgba(87,182,238,.40);background:rgba(2,14,24,.84);color:#acc3d3;border-radius:15px;padding:13px;font-weight:800;font-size:15px}.mode-btn.active,.btn.primary{color:#effcff;border-color:#66d8ff;background:linear-gradient(180deg,rgba(16,107,166,.92),rgba(5,64,105,.94));box-shadow:0 0 22px rgba(53,190,250,.28)}
-    .hero{text-align:center;padding:23px 12px;border-color:rgba(83,208,255,.74);box-shadow:0 0 28px rgba(35,160,220,.16),0 16px 40px rgba(0,0,0,.34)}.win{font-size:44px;font-weight:900;letter-spacing:7px;color:#f3fbff;text-shadow:0 0 15px rgba(75,207,255,.48)}.reserve{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;margin-left:8px;border-radius:50%;border:1px solid #58d7ff;color:#c9f2ff;font-weight:900;box-shadow:0 0 18px rgba(71,205,255,.22)}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:rgba(2,13,22,.78);border:1px solid rgba(90,180,235,.34);border-radius:16px;padding:15px}.metric b{display:block;font-size:29px;color:#e4f8ff;text-shadow:0 0 12px rgba(82,205,255,.22)}.metric span{display:block;color:#9eb9cb;font-size:12px;margin-top:5px}.number-line{font-size:21px;font-weight:800;line-height:1.65;color:#f1f9ff;word-spacing:6px}.row{display:flex;gap:9px}.row>*{flex:1}.btn{width:100%}.btn.secondary{color:#dff7ff;border-color:rgba(81,194,250,.62)}.btn:disabled{opacity:.38}
-    .list{display:flex;flex-direction:column;gap:8px}.item{border:1px solid rgba(82,174,230,.28);background:rgba(2,13,22,.72);border-radius:14px;padding:11px 12px}.item-head{display:flex;justify-content:space-between;gap:8px;font-weight:760}.item-sub{color:var(--muted);font-size:13px;margin-top:5px}.muted{color:var(--muted)}.hidden{display:none!important}
-    .footer-nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(1,7,12,.88);border-top:1px solid rgba(80,175,230,.28);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);padding:9px 12px calc(9px + env(safe-area-inset-bottom))}.footer-nav .inner{width:min(100%,560px);margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}.nav-btn{text-decoration:none;text-align:center}.nav-btn.active{color:#e5f9ff;border-color:#5bd4ff;background:linear-gradient(180deg,rgba(14,87,136,.86),rgba(5,51,85,.90));box-shadow:0 0 20px rgba(44,181,240,.18)}
-    @media(max-width:390px){.app{padding-left:11px;padding-right:11px}.card{border-radius:18px;padding:13px}.brand h1{font-size:32px}.win{font-size:35px;letter-spacing:5px}.number-line{font-size:19px}}
+    :root{
+      --bg:#02020a;--panel:rgba(8,10,31,.82);--panel2:rgba(9,12,38,.92);
+      --line:rgba(126,126,255,.52);--blue:#56bfff;--violet:#9b63ff;--pink:#ef55ff;
+      --text:#f7f5ff;--muted:#a8acc9;--soft:#d8d9ee;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html{background:var(--bg);touch-action:manipulation;-webkit-text-size-adjust:100%}
+    body{margin:0;min-height:100vh;overflow-x:hidden;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:
+      radial-gradient(circle at 12% 7%,rgba(89,36,180,.30),transparent 24%),
+      radial-gradient(circle at 84% 29%,rgba(43,87,226,.18),transparent 30%),
+      radial-gradient(circle at 49% 44%,rgba(205,41,235,.11),transparent 35%),
+      radial-gradient(circle at 18% 16%,#fff 0 1px,transparent 1.3px),
+      radial-gradient(circle at 73% 8%,#d8ddff 0 1px,transparent 1.25px),
+      radial-gradient(circle at 88% 48%,#fff 0 1px,transparent 1.2px),
+      radial-gradient(circle at 26% 64%,#d7cbff 0 1px,transparent 1.2px),
+      linear-gradient(180deg,#02020a 0%,#05051a 42%,#02020b 100%);background-attachment:fixed}
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.62;background-image:
+      radial-gradient(circle at 8% 30%,rgba(255,255,255,.9) 0 1px,transparent 1.3px),
+      radial-gradient(circle at 33% 12%,rgba(151,186,255,.85) 0 1px,transparent 1.4px),
+      radial-gradient(circle at 58% 23%,rgba(255,255,255,.75) 0 1px,transparent 1.3px),
+      radial-gradient(circle at 79% 67%,rgba(226,176,255,.75) 0 1px,transparent 1.4px);background-size:167px 179px,241px 211px,293px 257px,197px 233px}
+    button,input,select{font:inherit;font-size:16px}button,a,select{touch-action:manipulation}
+    .app{position:relative;width:min(100%,570px);margin:0 auto;padding:22px 15px 120px}
+    .brand{text-align:center;padding:17px 4px 14px}
+    .brand h1{margin:0;font-size:clamp(42px,12vw,66px);line-height:.98;letter-spacing:7px;font-weight:700;background:linear-gradient(180deg,#fff 2%,#dae1ff 32%,#9b7cff 65%,#54c6ff 100%);-webkit-background-clip:text;color:transparent;text-shadow:0 0 9px rgba(130,119,255,.45),0 0 27px rgba(116,74,255,.28)}
+    .brand p{display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0 0;color:#c8c9dd;font-size:13px;letter-spacing:3px;white-space:nowrap}
+    .brand p:before,.brand p:after{content:"";width:54px;height:1px;background:linear-gradient(90deg,transparent,#58aaff);box-shadow:0 0 9px #578fff}.brand p:after{transform:scaleX(-1)}
+    .card{position:relative;margin-bottom:10px;padding:14px;border:1px solid rgba(132,124,255,.56);border-radius:20px;background:linear-gradient(180deg,rgba(10,11,38,.91),rgba(5,8,27,.88));box-shadow:inset 0 1px rgba(255,255,255,.045),0 13px 31px rgba(0,0,0,.27),0 0 12px rgba(95,79,255,.07);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+    .card:after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 18px rgba(69,152,255,.025)}
+    .section-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}.section-icon{flex:0 0 42px;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:22px;color:#ddd7ff;border:1px solid rgba(160,91,255,.72);background:radial-gradient(circle at 40% 30%,rgba(171,68,255,.48),rgba(31,28,95,.66) 48%,rgba(10,15,42,.94));box-shadow:0 0 15px rgba(179,76,255,.28),inset 0 0 15px rgba(90,119,255,.16)}
+    .section-title,.label{font-size:18px;font-weight:700;color:#f1edff;letter-spacing:.2px}
+    .market-card{padding:15px 16px}.market-fields{padding-left:52px;margin-top:-43px}.market-fields .label{display:block;margin-bottom:8px}
+    .search-wrap{position:relative;margin-bottom:9px}.search-icon{position:absolute;left:15px;top:50%;transform:translateY(-50%);font-size:20px;color:#a9b3df;pointer-events:none}.search{width:100%;height:49px;padding:0 15px 0 46px;border-radius:15px;border:1px solid rgba(123,130,222,.65);outline:none;color:#f7f7ff;background:rgba(5,8,27,.86);box-shadow:inset 0 0 16px rgba(61,79,164,.10)}.search:focus{border-color:#79baff;box-shadow:0 0 0 1px rgba(74,170,255,.18),0 0 18px rgba(82,111,255,.22),inset 0 0 15px rgba(76,58,170,.10)}.search::placeholder{color:#8f94b2}
+    .select{appearance:none;-webkit-appearance:none;width:100%;height:52px;padding:0 45px 0 16px;border:1px solid rgba(117,135,235,.70);border-radius:15px;background-color:rgba(5,8,27,.92);background-image:linear-gradient(45deg,transparent 50%,#adb5d8 50%),linear-gradient(135deg,#adb5d8 50%,transparent 50%);background-position:calc(100% - 21px) 22px,calc(100% - 15px) 22px;background-size:6px 6px,6px 6px;background-repeat:no-repeat;color:#f0f1ff;outline:none}.select:focus{border-color:#7fb9ff;box-shadow:0 0 15px rgba(64,148,255,.19)}
+    .status{font-size:12px;color:var(--muted);line-height:1.4}.market-status:empty{display:none}.market-status{margin-top:7px}
+    .mode-card{display:flex;align-items:center;gap:12px;padding:12px 16px}.mode-title{display:flex;align-items:center;gap:10px;min-width:140px}.mode-row{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:12px}.mode-btn{min-height:53px;border-radius:18px;border:1px solid rgba(120,119,210,.56);background:linear-gradient(180deg,rgba(33,30,78,.62),rgba(12,13,40,.92));color:#a8a8bf;font-weight:800;letter-spacing:1px}.mode-btn.active{color:#fff;border-color:#62bfff;background:linear-gradient(100deg,rgba(21,85,210,.88),rgba(94,37,205,.88) 66%,rgba(184,45,224,.76));box-shadow:0 0 5px #72bcff,0 0 18px rgba(75,115,255,.55),0 0 28px rgba(219,71,255,.20),inset 0 0 14px rgba(255,255,255,.08)}#modeNote{display:none}
+    .hero{overflow:hidden;text-align:center;padding:21px 15px 17px;border-color:rgba(203,91,255,.77);background:
+      radial-gradient(circle at 16% 46%,rgba(245,98,255,.65) 0 3%,rgba(167,62,233,.28) 10%,transparent 31%),
+      radial-gradient(circle at 85% 63%,rgba(63,87,255,.26),transparent 30%),
+      linear-gradient(115deg,rgba(27,16,74,.92),rgba(5,11,38,.94) 52%,rgba(35,11,62,.90));box-shadow:0 0 12px rgba(227,70,255,.30),inset 0 0 30px rgba(136,67,255,.12)}
+    .hero:before{content:"";position:absolute;width:185px;height:185px;left:-54px;top:-27px;border-radius:50%;background:repeating-radial-gradient(ellipse at 54% 48%,rgba(238,104,255,.17) 0 5px,rgba(107,71,235,.11) 8px 13px,transparent 16px 22px);filter:blur(2px);transform:rotate(-24deg)}
+    .hero .label{position:relative;font-size:18px;font-weight:600;letter-spacing:1px}.win-row{position:relative;display:flex;align-items:center;justify-content:center;gap:16px;margin:8px 0 3px}.win{font-size:clamp(44px,14vw,70px);line-height:1;font-weight:800;letter-spacing:3px;color:#fff;text-shadow:0 0 7px #fff,0 0 18px rgba(235,89,255,.55)}.reserve{flex:0 0 64px;width:64px;height:64px;display:grid;place-items:center;border-radius:50%;font-size:31px;font-weight:800;color:#fff;border:1px solid #c95cff;background:rgba(8,11,39,.83);box-shadow:0 0 0 4px rgba(78,125,255,.12),0 0 4px #75c8ff,0 0 16px rgba(100,96,255,.72),0 0 25px rgba(224,74,255,.32),inset 0 0 16px rgba(93,81,218,.2)}.hero .status{position:relative;margin-top:8px;font-size:13px;color:#c7c6dd}
+    .rud-card{padding:0;border:none;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}.rud-card:after{display:none}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{position:relative;min-height:105px;padding:18px 18px 13px 86px;border:1px solid #54aaff;border-radius:18px;background:radial-gradient(circle at 87% 70%,rgba(81,62,210,.24),transparent 34%),linear-gradient(145deg,rgba(8,20,58,.92),rgba(9,9,34,.94));box-shadow:0 0 10px rgba(44,133,255,.25),inset 0 0 20px rgba(63,77,178,.08)}.metric:nth-child(2){border-color:#d14dff;background:radial-gradient(circle at 78% 58%,rgba(225,46,225,.30),transparent 36%),linear-gradient(145deg,rgba(17,10,45,.94),rgba(38,9,53,.91));box-shadow:0 0 10px rgba(214,64,255,.22),inset 0 0 20px rgba(174,58,214,.08)}.metric .metric-icon{position:absolute;left:19px;top:27px;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:28px;color:#7ad6ff;background:rgba(10,27,67,.73);border:1px solid rgba(79,139,255,.52);box-shadow:0 0 14px rgba(50,117,255,.16)}.metric:nth-child(2) .metric-icon{color:#ff96ff;border-color:rgba(227,83,255,.5);background:rgba(54,12,66,.68)}.metric b{display:block;font-size:46px;line-height:1;font-weight:700;color:#fff;text-shadow:0 0 12px rgba(151,105,255,.35)}.metric span{position:absolute;left:86px;top:15px;font-size:15px;color:#d9d6ea}.metric b{margin-top:24px}#sharedRud{margin:6px 8px 0}
+    .number-card{padding:14px 17px 15px;background:radial-gradient(circle at 85% 58%,rgba(151,34,196,.19),transparent 31%),linear-gradient(145deg,rgba(8,17,48,.94),rgba(12,8,35,.94));border-color:rgba(90,149,255,.68);box-shadow:0 0 8px rgba(46,132,255,.15),inset 0 0 22px rgba(66,58,155,.07)}.number-card.three{border-color:rgba(178,70,255,.64)}.number-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}.number-icon{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:20px;border:1px solid rgba(110,114,255,.64);background:rgba(20,27,78,.68);color:#d7ccff;box-shadow:0 0 10px rgba(106,86,255,.2)}.number-card .section-title{font-size:15px;font-weight:500;color:#b8b7cf;margin:0}.number-lines{padding-left:53px;margin-top:-8px}.number-line{font-size:clamp(19px,5.9vw,27px);font-weight:700;line-height:1.75;letter-spacing:.2px;color:#fbfaff;word-spacing:8px;white-space:nowrap}.three .number-line{line-height:1.4}
+    .action-card{padding:0;border:none;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}.action-card:after{display:none}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{min-height:57px;border-radius:17px;border:1px solid rgba(100,143,255,.75);background:linear-gradient(180deg,rgba(19,30,75,.86),rgba(9,12,42,.92));color:#f7f5ff;font-weight:800;letter-spacing:1px}.btn.primary{border-color:#ee69ff;background:linear-gradient(100deg,rgba(26,73,192,.84),rgba(109,48,208,.92),rgba(183,50,225,.82));box-shadow:0 0 6px #79beff,0 0 16px rgba(94,74,255,.42),0 0 22px rgba(239,74,255,.25)}.btn:disabled{opacity:.38}.button-icon{margin-right:8px;font-size:18px}#saveStatus:empty{display:none}#saveStatus{margin:6px 4px 0}
+    .history-card{padding:14px 17px 10px}.history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.history-label{display:flex;align-items:center;gap:10px;color:#c1b8df;font-size:17px}.history-label .calendar{font-size:24px;color:#b676ff}.spark{font-size:20px;color:#a3dcff;text-shadow:0 0 10px #70bbff}.list{overflow:hidden;border:1px solid rgba(82,95,166,.32);border-radius:14px;background:rgba(5,9,29,.52)}.item{padding:0 12px;border:0;border-bottom:1px solid rgba(82,95,166,.24);background:transparent}.item:last-child{border-bottom:0}.history-row{min-height:37px;display:grid;grid-template-columns:1.25fr .8fr .8fr;align-items:center;gap:8px}.history-date{font-size:12px;color:#9fa4c0}.history-result{text-align:center;font-size:16px;letter-spacing:1px;color:#f5f3ff}.history-mode{text-align:right;font-size:12px;color:#bb69ff}.muted{padding:16px;color:#8d92ae;font-size:13px}
+    .footer-nav{position:fixed;z-index:50;left:0;right:0;bottom:0;padding:8px 14px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(2,2,10,0),rgba(2,2,10,.94) 25%)}.footer-nav .inner{width:min(100%,540px);margin:0 auto;padding:5px;display:grid;grid-template-columns:1fr 1fr;border:1px solid rgba(119,118,208,.47);border-radius:21px;background:rgba(5,8,26,.91);box-shadow:0 -9px 25px rgba(0,0,0,.28);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}.nav-btn{min-height:62px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:17px;text-decoration:none;font-weight:800;letter-spacing:.5px;color:#888ca8;font-size:17px}.nav-btn.active{color:#fff;border:1px solid rgba(180,82,255,.69);background:radial-gradient(circle at 65% 10%,rgba(80,105,255,.27),transparent 38%),linear-gradient(110deg,rgba(84,37,157,.62),rgba(12,26,70,.78));box-shadow:0 0 6px #a45aff,0 0 19px rgba(126,63,255,.42),inset 0 0 16px rgba(96,91,255,.12)}.nav-icon{font-size:23px;color:#be9cff}.nav-btn:not(.active) .nav-icon{color:#777d9e}
+    .hidden{display:none!important}
+    @media(max-width:430px){.app{padding-left:12px;padding-right:12px}.brand{padding-top:11px}.brand p{font-size:11px;letter-spacing:2px;gap:8px}.brand p:before,.brand p:after{width:30px}.market-fields{padding-left:0;margin-top:9px}.market-card>.section-head{margin-bottom:3px}.mode-card{display:block}.mode-title{margin-bottom:10px}.metric{padding-left:69px;min-height:101px}.metric .metric-icon{left:13px;width:43px;height:43px}.metric span{left:69px}.win-row{gap:10px}.reserve{width:56px;height:56px;flex-basis:56px;font-size:27px}.number-card{padding-left:13px;padding-right:13px}.number-lines{padding-left:48px}.number-line{word-spacing:4px}.history-row{grid-template-columns:1.18fr .76fr .76fr}}
+    @media(max-width:370px){.win{font-size:41px;letter-spacing:1px}.reserve{width:50px;height:50px;flex-basis:50px}.number-line{font-size:18px;word-spacing:2px}.row{gap:7px}.btn{font-size:14px}.history-date,.history-mode{font-size:11px}}
   </style>
-  <link rel="stylesheet" href="/styles.css?v=20260809-3" />
 </head>
 <body>
   <main class="app">
     <header class="brand"><h1>VELTRIX</h1><p>Adaptive Number Intelligence</p></header>
-    <section class="card"><div class="label">ตลาด</div><select id="marketSelect" class="select"><option value="">กำลังโหลดตลาด...</option></select><div id="marketStatus" class="status">ใช้ 10 งวดล่าสุดในการคำนวณ • เก็บสูงสุด 20 งวด</div></section>
-    <section class="card"><div class="label">โหมด</div><div class="mode-row"><button id="modeA" class="mode-btn">MODE A</button><button id="modeB" class="mode-btn active">MODE B</button></div><div id="modeNote" class="status">งวด 3–5 เป็นหลัก • งวด 1–3 เป็นตัวสนับสนุน</div></section>
-    <section class="card hero"><div class="label">WIN 6 + RESERVE</div><div><span id="win6" class="win">------</span><span id="reserve7" class="reserve">-</span></div><div id="engineStatus" class="status">เลือกตลาดเพื่อคำนวณ</div></section>
-    <section class="card"><div class="grid2"><div class="metric"><b id="rudTop">-</b><span>รูดบน</span></div><div class="metric"><b id="rudBottom">-</b><span>รูดล่าง</span></div></div><div id="sharedRud" class="status hidden"></div></section>
-    <section class="card"><div class="section-title">เจาะ 2</div><div id="pair2a" class="number-line">-- • -- • -- • -- • --</div><div id="pair2b" class="number-line">-- • -- • -- • -- • --</div></section>
-    <section class="card"><div class="section-title">เจาะ 3</div><div id="pair3" class="number-line">--- • --- • --- • --- • ---</div></section>
-    <section class="card"><div class="row"><button id="copyBtn" class="btn secondary" disabled>COPY</button><button id="saveBtn" class="btn primary" disabled>AUTO LOCK ✓</button></div><div id="saveStatus" class="status">ถ้าไม่กด ระบบจะล็อกอัตโนมัติก่อนบันทึกผลใหม่</div></section>
-    <section class="card"><div class="section-title">5 งวดล่าสุด</div><div id="historyList" class="list"><div class="muted">ยังไม่ได้เลือกตลาด</div></div></section>
+
+    <section class="card market-card">
+      <div class="section-head"><span class="section-icon">⌂</span><span class="label">ตลาด</span></div>
+      <div class="market-fields">
+        <div class="search-wrap"><span class="search-icon">⌕</span><input id="marketSearch" class="search" type="search" inputmode="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="ค้นหาตลาด..." disabled /></div>
+        <select id="marketSelect" class="select"><option value="">กำลังโหลดตลาด...</option></select>
+        <div id="marketStatus" class="status market-status"></div>
+      </div>
+    </section>
+
+    <section class="card mode-card">
+      <div class="mode-title"><span class="section-icon">◎</span><span class="label">โหมด</span></div>
+      <div class="mode-row"><button id="modeA" class="mode-btn">MODE A</button><button id="modeB" class="mode-btn active">MODE B</button></div>
+      <div id="modeNote" class="status">งวด 3–5 เป็นหลัก • งวด 1–3 เป็นตัวสนับสนุน</div>
+    </section>
+
+    <section class="card hero">
+      <div class="label">WIN 6 + RESERVE</div>
+      <div class="win-row"><span id="win6" class="win">------</span><span id="reserve7" class="reserve">-</span></div>
+      <div id="engineStatus" class="status">เลือกตลาดเพื่อคำนวณ</div>
+    </section>
+
+    <section class="card rud-card">
+      <div class="grid2">
+        <div class="metric"><span class="metric-icon">⇈</span><span>รูดบน</span><b id="rudTop">-</b></div>
+        <div class="metric"><span class="metric-icon">⇊</span><span>รูดล่าง</span><b id="rudBottom">-</b></div>
+      </div>
+      <div id="sharedRud" class="status hidden"></div>
+    </section>
+
+    <section class="card number-card">
+      <div class="number-head"><span class="number-icon">◎</span><div class="section-title">เจาะ 2</div></div>
+      <div class="number-lines"><div id="pair2a" class="number-line">-- • -- • -- • -- • --</div><div id="pair2b" class="number-line">-- • -- • -- • -- • --</div></div>
+    </section>
+
+    <section class="card number-card three">
+      <div class="number-head"><span class="number-icon">◇</span><div class="section-title">เจาะ 3</div></div>
+      <div class="number-lines"><div id="pair3" class="number-line">--- • --- • --- • --- • ---</div></div>
+    </section>
+
+    <section class="card action-card">
+      <div class="row"><button id="copyBtn" class="btn" disabled><span class="button-icon">▣</span>COPY</button><button id="saveBtn" class="btn primary" disabled><span class="button-icon">♙</span>AUTO LOCK ✓</button></div>
+      <div id="saveStatus" class="status"></div>
+    </section>
+
+    <section class="card history-card">
+      <div class="history-head"><div class="history-label"><span class="calendar">▦</span><span>5 งวดล่าสุด</span></div><span class="spark">✦</span></div>
+      <div id="historyList" class="list"><div class="muted">ยังไม่ได้เลือกตลาด</div></div>
+    </section>
   </main>
-  <nav class="footer-nav"><div class="inner"><a class="nav-btn active" href="/">ENGINE</a><a class="nav-btn" href="/results.html">RESULTS</a></div></nav>
+
+  <nav class="footer-nav"><div class="inner"><a class="nav-btn active" href="/"><span class="nav-icon">◆</span>ENGINE</a><a class="nav-btn" href="/results.html"><span class="nav-icon">▥</span>RESULTS</a></div></nav>
   <script type="module" src="/app.js?v=20260809-4"></script>
+  <script type="module" src="/ui.js?v=20260809-1"></script>
 </body>
 </html>
