@@ -18,7 +18,15 @@ function rowFromPrediction(marketId,sourceId,p){
     pair2_top:p.pair2Top||[],
     pair2_bottom:p.pair2Bottom||[],
     pair3_top:p.pair3Top||[],
-    metadata:{pool_size:p.poolSize,ui_version:'v1'}
+    metadata:{
+      pool_size:p.poolSize,
+      ui_version:'v1',
+      target_date:p.targetDate||null,
+      day_win:p.dayWin||null,
+      year_win:p.yearWin||null,
+      calendar_bonus:p.calendarBonus||null,
+      hybrid_version:p.hybridVersion||null
+    }
   };
 }
 
