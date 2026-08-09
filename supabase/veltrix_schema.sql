@@ -1,8 +1,9 @@
 -- VELTRIX Supabase schema
 -- Project: six-digit-thai-lao
 -- All VELTRIX objects are isolated with the veltrix_ prefix.
--- Designed for irregular market schedules: predictions are tied to the latest known result,
--- not to a guessed next calendar date.
+-- Retention rule: store at most 20 actual occurrences per market.
+-- Engine rule: calculate from the latest 10 actual occurrences per market.
+-- Calendar gaps never create fake/missing draws.
 
 create extension if not exists pgcrypto;
 
@@ -59,7 +60,7 @@ create index if not exists veltrix_market_aliases_market_idx
 -- -----------------------------------------------------------------------------
 -- 3) Actual market results
 --    One result per canonical market per draw date.
---    Calendar gaps do NOT count as missing draws; the engine reads latest occurrences.
+--    Only the latest 20 actual occurrences are retained for each market.
 -- -----------------------------------------------------------------------------
 create table if not exists public.veltrix_market_results (
   id uuid primary key default gen_random_uuid(),
@@ -84,8 +85,6 @@ create index if not exists veltrix_results_draw_date_idx
 
 -- -----------------------------------------------------------------------------
 -- 4) Import batches
---    Exact same source text can be detected by content_hash.
---    Row-level duplicates are still blocked by (market_id, draw_date).
 -- -----------------------------------------------------------------------------
 create table if not exists public.veltrix_import_batches (
   id uuid primary key default gen_random_uuid(),
@@ -106,13 +105,10 @@ create table if not exists public.veltrix_import_batches (
   )
 );
 
--- Add FK only after import_batches exists.
 do $$
 begin
   if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'veltrix_results_import_batch_fk'
+    select 1 from pg_constraint where conname = 'veltrix_results_import_batch_fk'
   ) then
     alter table public.veltrix_market_results
       add constraint veltrix_results_import_batch_fk
@@ -123,39 +119,33 @@ begin
 end $$;
 
 -- -----------------------------------------------------------------------------
--- 5) Locked prediction snapshots for the NEXT occurrence after source_result_id.
---    This is the key rule for markets that do not draw every day.
---    MODE A: draws 1-3 main. MODE B: draws 3-5 main.
+-- 5) Locked prediction snapshots for the NEXT actual occurrence.
+--    MODE A: occurrences 1-3 primary, 3-5 support.
+--    MODE B: occurrences 3-5 primary, 1-3 support.
 -- -----------------------------------------------------------------------------
 create table if not exists public.veltrix_prediction_snapshots (
   id uuid primary key default gen_random_uuid(),
   market_id uuid not null references public.veltrix_markets(id) on delete restrict,
-  source_result_id uuid not null references public.veltrix_market_results(id) on delete restrict,
+  source_result_id uuid not null references public.veltrix_market_results(id) on delete cascade,
   mode text not null,
   engine_version text not null default 'v1',
-
   pool_a text,
   pool_b text,
   rank_scores jsonb not null default '{}'::jsonb,
-
   win6 text not null,
   reserve7 text not null,
-
   rud_top text,
   rud_bottom text,
   rud_shared text,
   rud_support text,
   rud_challenger text,
-
   pair2_top text[] not null default '{}'::text[],
   pair2_bottom text[] not null default '{}'::text[],
   pair3_top text[] not null default '{}'::text[],
-
   metadata jsonb not null default '{}'::jsonb,
   locked_at timestamptz not null default now(),
   settled_at timestamptz,
   created_at timestamptz not null default now(),
-
   constraint veltrix_snapshot_mode check (mode in ('A','B')),
   constraint veltrix_snapshot_win6_format check (win6 ~ '^[0-9]{6}$'),
   constraint veltrix_snapshot_reserve_format check (reserve7 ~ '^[0-9]$'),
@@ -176,14 +166,22 @@ create index if not exists veltrix_snapshots_market_locked_idx
 create index if not exists veltrix_snapshots_pending_idx
   on public.veltrix_prediction_snapshots (market_id, settled_at, locked_at desc);
 
+-- If an earlier schema used RESTRICT, make rolling retention safe.
+alter table public.veltrix_prediction_snapshots
+  drop constraint if exists veltrix_prediction_snapshots_source_result_id_fkey;
+alter table public.veltrix_prediction_snapshots
+  add constraint veltrix_prediction_snapshots_source_result_id_fkey
+  foreign key (source_result_id)
+  references public.veltrix_market_results(id)
+  on delete cascade;
+
 -- -----------------------------------------------------------------------------
 -- 6) Forward audit / settlement
 -- -----------------------------------------------------------------------------
 create table if not exists public.veltrix_forward_audit (
   id uuid primary key default gen_random_uuid(),
   snapshot_id uuid not null references public.veltrix_prediction_snapshots(id) on delete cascade,
-  actual_result_id uuid not null references public.veltrix_market_results(id) on delete restrict,
-
+  actual_result_id uuid not null references public.veltrix_market_results(id) on delete cascade,
   win6_top_count smallint not null default 0,
   win7_top_count smallint not null default 0,
   win6_top_full boolean not null default false,
@@ -192,20 +190,16 @@ create table if not exists public.veltrix_forward_audit (
   win7_top2_full boolean not null default false,
   win6_bottom_full boolean not null default false,
   win7_bottom_full boolean not null default false,
-
   rud_top_hit boolean,
   rud_bottom_hit boolean,
   rud_shared_hit boolean,
   rud_support_hit boolean,
   rud_challenger_hit boolean,
-
   pair2_top_hit boolean,
   pair2_bottom_hit boolean,
   pair3_top_hit boolean,
-
   details jsonb not null default '{}'::jsonb,
   settled_at timestamptz not null default now(),
-
   constraint veltrix_audit_top_count_range check (win6_top_count between 0 and 3 and win7_top_count between 0 and 3),
   constraint veltrix_audit_snapshot_result_unique unique (snapshot_id, actual_result_id)
 );
@@ -216,8 +210,16 @@ create index if not exists veltrix_forward_audit_result_idx
 create index if not exists veltrix_forward_audit_snapshot_idx
   on public.veltrix_forward_audit (snapshot_id);
 
+alter table public.veltrix_forward_audit
+  drop constraint if exists veltrix_forward_audit_actual_result_id_fkey;
+alter table public.veltrix_forward_audit
+  add constraint veltrix_forward_audit_actual_result_id_fkey
+  foreign key (actual_result_id)
+  references public.veltrix_market_results(id)
+  on delete cascade;
+
 -- -----------------------------------------------------------------------------
--- 7) Engine settings. Keeps A/B weights and UI/engine flags isolated per version.
+-- 7) Engine settings
 -- -----------------------------------------------------------------------------
 create table if not exists public.veltrix_engine_settings (
   id uuid primary key default gen_random_uuid(),
@@ -228,16 +230,22 @@ create table if not exists public.veltrix_engine_settings (
   created_at timestamptz not null default now()
 );
 
--- Seed only VELTRIX-owned settings.
 insert into public.veltrix_engine_settings (setting_key, setting_value, description)
 values
   ('engine_version', '"v1"'::jsonb, 'Current VELTRIX engine version'),
   ('mode_a', '{"main_window":"1-3","support_window":"3-5"}'::jsonb, 'MODE A: recent window is primary'),
   ('mode_b', '{"main_window":"3-5","support_window":"1-3"}'::jsonb, 'MODE B: memory window is primary'),
-  ('result_reading', '{"basis":"latest_occurrences","calendar_gap_is_missing":false,"history_limit":20}'::jsonb, 'Read latest occurrences for each market; never infer missing daily draws'),
+  ('result_reading', '{"basis":"latest_occurrences","calendar_gap_is_missing":false,"history_limit":10,"retention_limit":20}'::jsonb, 'Store max 20 actual occurrences per market; engine calculates from latest 10'),
   ('pair2_display', '{"top_internal":5,"bottom_internal":5,"ui_label":"เจาะ 2","show_top_bottom_labels":false}'::jsonb, 'Keep 5+5 internally while UI shows one compact เจาะ 2 block'),
   ('rud_display', '{"top_count":1,"bottom_count":1,"shared_support_enabled":true}'::jsonb, 'One top Rud and one bottom Rud; when equal, show shared Rud plus support digit')
 on conflict (setting_key) do nothing;
+
+-- Enforce the current history/retention rule even if the schema is re-run.
+update public.veltrix_engine_settings
+set setting_value = '{"basis":"latest_occurrences","calendar_gap_is_missing":false,"history_limit":10,"retention_limit":20}'::jsonb,
+    description = 'Store max 20 actual occurrences per market; engine calculates from latest 10',
+    updated_at = now()
+where setting_key = 'result_reading';
 
 -- -----------------------------------------------------------------------------
 -- updated_at triggers
@@ -258,8 +266,51 @@ before update on public.veltrix_engine_settings
 for each row execute function public.veltrix_touch_updated_at();
 
 -- -----------------------------------------------------------------------------
--- RLS: enabled with no anon policies. VELTRIX should write/read through server-side
--- Vercel API routes using SUPABASE_SERVICE_ROLE_KEY. Never expose that key to browser JS.
+-- Rolling retention: after each new result, retain only latest 20 occurrences
+-- for that market. The 21st+ oldest result is removed automatically.
+-- Dependent snapshots/audits for pruned results cascade with it.
+-- -----------------------------------------------------------------------------
+create or replace function public.veltrix_prune_market_results_20()
+returns trigger
+language plpgsql
+as $$
+begin
+  delete from public.veltrix_market_results r
+  where r.id in (
+    select x.id
+    from public.veltrix_market_results x
+    where x.market_id = new.market_id
+    order by x.draw_date desc, x.created_at desc, x.id desc
+    offset 20
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists veltrix_results_keep_20 on public.veltrix_market_results;
+create trigger veltrix_results_keep_20
+after insert on public.veltrix_market_results
+for each row execute function public.veltrix_prune_market_results_20();
+
+-- If this schema is applied to an existing VELTRIX database, prune any existing
+-- rows beyond the latest 20 for every market now.
+delete from public.veltrix_market_results r
+where r.id in (
+  select id
+  from (
+    select
+      id,
+      row_number() over (
+        partition by market_id
+        order by draw_date desc, created_at desc, id desc
+      ) as rn
+    from public.veltrix_market_results
+  ) ranked
+  where rn > 20
+);
+
+-- -----------------------------------------------------------------------------
+-- RLS: no anon policies. App reads/writes through server-side Vercel API routes.
 -- -----------------------------------------------------------------------------
 alter table public.veltrix_markets enable row level security;
 alter table public.veltrix_market_aliases enable row level security;
@@ -270,8 +321,8 @@ alter table public.veltrix_forward_audit enable row level security;
 alter table public.veltrix_engine_settings enable row level security;
 
 -- -----------------------------------------------------------------------------
--- Helpful view: latest 20 actual occurrences per market.
--- Calendar gaps are ignored; rn is occurrence order, not day difference.
+-- Latest 20 = stored rolling history / inspection.
+-- rn is occurrence order, never calendar-day distance.
 -- -----------------------------------------------------------------------------
 create or replace view public.veltrix_latest_20 as
 select *
@@ -295,4 +346,13 @@ from (
 where x.rn <= 20;
 
 comment on view public.veltrix_latest_20 is
-'Latest 20 actual occurrences per market. rn is occurrence order; calendar gaps do not create missing draws.';
+'Rolling stored history: maximum latest 20 actual occurrences per market.';
+
+-- Engine-facing view: VELTRIX calculations use only latest 10 occurrences.
+create or replace view public.veltrix_latest_10 as
+select *
+from public.veltrix_latest_20
+where rn <= 10;
+
+comment on view public.veltrix_latest_10 is
+'Engine history: latest 10 actual occurrences per market; calendar gaps are ignored.';
