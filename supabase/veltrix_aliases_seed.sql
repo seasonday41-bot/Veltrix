@@ -13,7 +13,8 @@ with alias_seed(alias, canonical_name) as (
     ('อังกฤษ VIP', 'หุ้นอังกฤษ VIP'),
     ('รัสเซีย VIP', 'หุ้นรัสเซีย VIP'),
     ('เยอรมัน VIP', 'หุ้นเยอรมัน VIP'),
-    ('ไต้หวัน VIP', 'หุ้นไต้หวัน VIP')
+    ('ไต้หวัน VIP', 'หุ้นไต้หวัน VIP'),
+    ('นิคเคอิเช้า', 'หุ้นนิคเคอิเช้า')
 )
 insert into public.veltrix_market_aliases (market_id, alias, active)
 select m.id, s.alias, true
@@ -40,6 +41,7 @@ where lower(trim(a.alias)) in (
   lower('อังกฤษ VIP'),
   lower('รัสเซีย VIP'),
   lower('เยอรมัน VIP'),
-  lower('ไต้หวัน VIP')
+  lower('ไต้หวัน VIP'),
+  lower('นิคเคอิเช้า')
 )
 order by a.alias;
