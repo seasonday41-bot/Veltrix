@@ -156,9 +156,7 @@ function pair3Engine(rows, rank, rud, pair2top){
     return true;
   };
 
-  // Pass 1: prefer diversity — at most 2 repeat-pattern picks and one per repeated digit.
   for(const c of candidates){ if(accept(c,true)&&out.length===5)break; }
-  // Pass 2: if a market has unusually repeat-heavy Pair2 support, relax pair-use only.
   if(out.length<5){
     for(const c of candidates){
       if(seen.has(c.key))continue;
@@ -167,7 +165,6 @@ function pair3Engine(rows, rank, rud, pair2top){
       if(accept(c,false)&&out.length===5)break;
     }
   }
-  // Final deterministic fill; still no duplicate triple key.
   if(out.length<5){
     for(const c of candidates){
       if(seen.has(c.key))continue;
@@ -178,16 +175,41 @@ function pair3Engine(rows, rank, rud, pair2top){
   return out.slice(0,5);
 }
 
+// MODE B WIN Fusion V1: Pair/Rud evidence adds a bounded bonus to the original
+// ranking. No digit is forcibly locked into WIN6 or Reserve.
+function fuseModeBWin(rank,rud,p2,p3){
+  const digitCounts=(sets)=>{
+    const m=Object.fromEntries(DIGITS.map(d=>[d,0]));
+    for(const s of sets||[])for(const d of String(s))m[d]++;
+    return m;
+  };
+  const top=normMap(digitCounts(p2.top));
+  const bottom=normMap(digitCounts(p2.bottom));
+  const triples=normMap(digitCounts(p3));
+  const score={},bonus={};
+  for(const d of DIGITS){
+    const topHit=top[d]>0?1:0;
+    const tripleHit=triples[d]>0?1:0;
+    const consensus=topHit&&tripleHit?1:0;
+    const rudHit=(d===rud.top||d===rud.bottom)?1:0;
+    bonus[d]=.10*top[d]+.04*bottom[d]+.14*triples[d]+.08*consensus+.04*rudHit;
+    score[d]=(rank.score[d]||0)+bonus[d];
+  }
+  const ranked=[...DIGITS].sort((a,b)=>score[b]-score[a]||rank.ranked.indexOf(a)-rank.ranked.indexOf(b)||(+a)-(+b));
+  return {ranked,score,bonus};
+}
+
 function calculate(rows){
   const rud=rudEngine(rows);
   const result={};
   for(const mode of ['A','B']){
     const rank=rankMode(rows,mode,rud);
-    const win6=rank.ranked.slice(0,6).join('');
-    const reserve7=rank.ranked[6];
     const p2=pair2Engine(rows,rank,rud);
     const p3=pair3Engine(rows,rank,rud,p2.top);
-    result[mode]={mode,win6,reserve7,rudTop:rud.top,rudBottom:rud.bottom,rudSupport:rud.support,pair2Top:p2.top,pair2Bottom:p2.bottom,pair3Top:p3,poolA:rank.A,poolB:rank.B,poolSize:rank.poolSize,rankScores:rank.score};
+    const winRank=mode==='B'?fuseModeBWin(rank,rud,p2,p3):{ranked:rank.ranked,score:rank.score,bonus:null};
+    const win6=winRank.ranked.slice(0,6).join('');
+    const reserve7=winRank.ranked[6];
+    result[mode]={mode,win6,reserve7,rudTop:rud.top,rudBottom:rud.bottom,rudSupport:rud.support,pair2Top:p2.top,pair2Bottom:p2.bottom,pair3Top:p3,poolA:rank.A,poolB:rank.B,poolSize:rank.poolSize,rankScores:winRank.score,baseRankScores:rank.score,fusionBonus:winRank.bonus};
   }
   return result;
 }
