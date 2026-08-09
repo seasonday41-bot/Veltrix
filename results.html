@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#07110f" />
+  <title>VELTRIX Results</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="brand">
+      <h1>VELTRIX</h1>
+      <p>Results / Forward Tracker</p>
+    </header>
+
+    <section class="card">
+      <div class="label">วางผลทั้งก้อน</div>
+      <textarea id="rawText" class="textarea" placeholder="สรุปผลหวยประจำวันที่ 08 สิงหาคม 2569\n787-21 🇺🇸 ดาวโจนส์ VIP\n161-08 🇺🇸 ดาวโจนส์สตาร์\n794-56 🇱🇦 ลาวกาชาด"></textarea>
+      <div class="status">ระบบอ่านเฉพาะตลาดที่มีใน VELTRIX • ตลาดที่ไม่ออกวันนี้ไม่ถือว่าขาด</div>
+      <div style="height:9px"></div>
+      <button id="checkBtn" class="btn secondary">ตรวจข้อมูล</button>
+    </section>
+
+    <section id="previewCard" class="card hidden">
+      <div class="section-title">สรุปก่อนบันทึก</div>
+      <div class="summary">
+        <div class="box"><strong id="parsedCount">0</strong><span class="muted">อ่านได้</span></div>
+        <div class="box"><strong id="newCount">0</strong><span class="muted">เพิ่มใหม่</span></div>
+        <div class="box"><strong id="duplicateCount">0</strong><span class="muted">ซ้ำ</span></div>
+        <div class="box"><strong id="unknownCount">0</strong><span class="muted">ไม่รู้จัก</span></div>
+      </div>
+      <div id="conflictStatus" class="status"></div>
+      <div style="height:10px"></div>
+      <button id="saveResultsBtn" class="btn primary">บันทึกผล + ตรวจ Forward</button>
+      <div id="saveResultStatus" class="status"></div>
+    </section>
+
+    <section id="itemsCard" class="card hidden">
+      <div class="section-title">รายการที่ตรวจพบ</div>
+      <div id="previewList" class="list"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">หลักการอ่านข้อมูล</div>
+      <div class="small-line">• เก็บผลจริงไม่เกิน 20 งวดต่อหนึ่งตลาด</div>
+      <div class="small-line">• Engine ใช้ 10 งวดล่าสุดของตลาดนั้น</div>
+      <div class="small-line">• วันที่ใช้บันทึกและกันซ้ำ แต่การคำนวณนับตาม “งวดจริง”</div>
+      <div class="small-line">• ตลาดเดียวกัน + วันเดียวกัน + ผลเดิม = ข้าม</div>
+      <div class="small-line">• ตลาดเดียวกัน + วันเดียวกัน + ผลต่าง = Conflict ไม่เขียนทับ</div>
+    </section>
+  </main>
+
+  <nav class="footer-nav"><div class="inner">
+    <a class="nav-btn" href="/">ENGINE</a>
+    <a class="nav-btn active" href="/results.html">RESULTS</a>
+  </div></nav>
+
+  <script type="module" src="/results.js"></script>
+</body>
+</html>
