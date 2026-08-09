@@ -1,4 +1,4 @@
-import {db,json,allow} from './_db.js';
+import {db,json,allow} from '../lib/db.js';
 
 function rowFromPrediction(marketId,sourceId,p){
   return {
