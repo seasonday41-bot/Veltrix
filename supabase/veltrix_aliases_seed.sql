@@ -1,6 +1,5 @@
 -- VELTRIX explicit market aliases
--- Approved from RESULTS import UNKNOWN review on 2026-08-09.
--- These are aliases only. They do NOT create duplicate markets.
+-- Explicit aliases only. No fuzzy/automatic remapping.
 
 with alias_seed(alias, canonical_name) as (
   values
@@ -14,7 +13,9 @@ with alias_seed(alias, canonical_name) as (
     ('รัสเซีย VIP', 'หุ้นรัสเซีย VIP'),
     ('เยอรมัน VIP', 'หุ้นเยอรมัน VIP'),
     ('ไต้หวัน VIP', 'หุ้นไต้หวัน VIP'),
-    ('นิคเคอิเช้า', 'หุ้นนิคเคอิเช้า')
+    ('นิคเคอิเช้า', 'หุ้นนิคเคอิเช้า'),
+    ('หุ้นฮั่งเส็ง VIP เช้า', 'ฮั่งเส็ง VIP เช้า'),
+    ('หุ้นฮั่งเส็ง VIP บ่าย', 'ฮั่งเส็ง VIP บ่าย')
 )
 insert into public.veltrix_market_aliases (market_id, alias, active)
 select m.id, s.alias, true
@@ -24,24 +25,8 @@ join public.veltrix_markets m
 where m.active = true
 on conflict do nothing;
 
--- Verify approved aliases.
-select
-  a.alias,
-  m.market_name as canonical_market,
-  a.active
+select a.alias, m.market_name as canonical_market, a.active
 from public.veltrix_market_aliases a
 join public.veltrix_markets m on m.id = a.market_id
-where lower(trim(a.alias)) in (
-  lower('ดาวโจนส์ VIP'),
-  lower('ดาวโจนส์สตาร์'),
-  lower('เกาหลี VIP'),
-  lower('จีน VIP เช้า'),
-  lower('จีน VIP บ่าย'),
-  lower('สิงคโปร์ VIP'),
-  lower('อังกฤษ VIP'),
-  lower('รัสเซีย VIP'),
-  lower('เยอรมัน VIP'),
-  lower('ไต้หวัน VIP'),
-  lower('นิคเคอิเช้า')
-)
+where a.active = true
 order by a.alias;
