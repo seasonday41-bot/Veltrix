@@ -7,7 +7,7 @@ function render(){
   const o=outputs[activeMode];
   $('modeA')?.classList.toggle('active',activeMode==='A');
   $('modeB')?.classList.toggle('active',activeMode==='B');
-  if($('modeNote'))$('modeNote').textContent=activeMode==='A'?'งวด 1–3 เป็นหลัก • งวด 3–5 เป็นตัวสนับสนุน':'งวด 3–5 → CROSS RUD 2 → WIN7 → Shared Cluster';
+  if($('modeNote'))$('modeNote').textContent=activeMode==='A'?'งวด 1–3 เป็นหลัก • งวด 3–5 เป็นตัวสนับสนุน':'งวด 3–5 → รูด 2 → WIN7 → Shared Cluster';
   if($('win6'))$('win6').textContent=o.win6;
   if($('reserve7'))$('reserve7').textContent=o.reserve7;
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
@@ -19,16 +19,16 @@ function render(){
 
   const metricLabels=document.querySelectorAll('.metric span');
   if(metricLabels.length>=2){
-    metricLabels[0].textContent=activeMode==='B'?'CROSS RUD A':'รูดบน';
-    metricLabels[1].textContent=activeMode==='B'?'CROSS RUD B':'รูดล่าง';
+    metricLabels[0].textContent='รูด';
+    metricLabels[1].textContent='รูด';
   }
   if($('sharedRud')){
     if(activeMode==='B'){
       $('sharedRud').classList.remove('hidden');
-      $('sharedRud').textContent=`CROSS RUD 2 : ${o.rudTop} • ${o.rudBottom}`;
+      $('sharedRud').textContent=`รูด ${o.rudTop} • ${o.rudBottom}`;
     }else if(o.rudTop===o.rudBottom){
       $('sharedRud').classList.remove('hidden');
-      $('sharedRud').textContent=`รูด 2 ตัว ${o.rudTop} • ${o.rudSupport??'-'}`;
+      $('sharedRud').textContent=`รูด ${o.rudTop} • ${o.rudSupport??'-'}`;
     }else $('sharedRud').classList.add('hidden');
   }
   if($('copyBtn'))$('copyBtn').disabled=false;
@@ -92,7 +92,7 @@ async function loadHistory(marketKey){
 
 function copyOutput(){
   const o=outputs?.[activeMode];if(!o)return;
-  const rud=activeMode==='B'?`CROSS RUD ${o.rudTop} • ${o.rudBottom}`:(o.rudTop===o.rudBottom?`รูด ${o.rudTop} • ${o.rudSupport}`:`รูด ${o.rudTop} • ${o.rudBottom}`);
+  const rud=activeMode==='B'?`รูด ${o.rudTop} • ${o.rudBottom}`:(o.rudTop===o.rudBottom?`รูด ${o.rudTop} • ${o.rudSupport}`:`รูด ${o.rudTop} • ${o.rudBottom}`);
   const text=`${currentMarket?.market_name||''}\nMODE ${activeMode}\n\nWIN\n${o.win6}(${o.reserve7})\n\n${rud}\n\nเจาะ 2\n${o.pair2Top.join(' • ')}\n${o.pair2Bottom.join(' • ')}\n\nเจาะ 3\n${o.pair3Top.join(' • ')}`;
   navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
 }
