@@ -1,6 +1,9 @@
 import {db,json,allow} from '../lib/db.js';
 
 function rowFromPrediction(marketId,sourceId,p){
+  const shared=Array.isArray(p.pair2Shared)?p.pair2Shared:(Array.isArray(p.pair2Top)?p.pair2Top:[]);
+  const pair2Top=shared.slice(0,5);
+  const pair2Bottom=shared.slice(5,10);
   return {
     market_id:marketId,
     source_result_id:sourceId,
@@ -15,8 +18,8 @@ function rowFromPrediction(marketId,sourceId,p){
     rud_bottom:p.rudBottom||null,
     rud_shared:p.rudTop===p.rudBottom?p.rudTop:null,
     rud_support:p.rudSupport||null,
-    pair2_top:p.pair2Top||[],
-    pair2_bottom:p.pair2Bottom||[],
+    pair2_top:pair2Top,
+    pair2_bottom:pair2Bottom,
     pair3_top:p.pair3Top||[],
     metadata:{
       pool_size:p.poolSize,
@@ -25,7 +28,9 @@ function rowFromPrediction(marketId,sourceId,p){
       day_win:p.dayWin||null,
       year_win:p.yearWin||null,
       calendar_bonus:p.calendarBonus||null,
-      hybrid_version:p.hybridVersion||null
+      hybrid_version:p.hybridVersion||null,
+      pair2_layout:'shared_10_split_5_5',
+      pair2_shared:shared.slice(0,10)
     }
   };
 }
