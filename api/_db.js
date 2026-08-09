@@ -34,3 +34,7 @@ export function json(res,status,data){
 export function allow(res,methods='GET'){
   res.setHeader('Allow',methods);
 }
+
+export default function handler(req,res){
+  return json(res,404,{error:'Not found'});
+}
