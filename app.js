@@ -1,38 +1,29 @@
 const $=id=>document.getElementById(id);
 let activeMode='B',currentMarket=null,history=[],outputs=null,allMarkets=[];
-const enginePromise=import('/lib/veltrix-engine.js?v=20260809-p3v5');
+const enginePromise=import('/lib/veltrix-engine.js?v=20260809-sharedv7');
 
 function render(){
   if(!outputs)return;
   const o=outputs[activeMode];
   $('modeA')?.classList.toggle('active',activeMode==='A');
   $('modeB')?.classList.toggle('active',activeMode==='B');
-  if($('modeNote'))$('modeNote').textContent=activeMode==='A'?'งวด 1–3 เป็นหลัก • งวด 3–5 เป็นตัวสนับสนุน':'งวด 3–5 → รูด 2 → WIN7 → เจาะ 2 รวม 10 ชุด';
+  if($('modeNote'))$('modeNote').textContent=activeMode==='A'?'งวด 1–3 → รูด 2 → WIN7 → เจาะ 2 รวม 10 ชุด':'งวด 3–5 → รูด 2 → WIN7 → เจาะ 2 รวม 10 ชุด';
   if($('win6'))$('win6').textContent=o.win6;
   if($('reserve7'))$('reserve7').textContent=o.reserve7;
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
-  if(activeMode==='B'){
-    const shared=o.pair2Shared||o.pair2Top||[];
-    if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
-    if($('pair2b'))$('pair2b').textContent=shared.slice(5,10).join(' • ');
-  }else{
-    if($('pair2a'))$('pair2a').textContent=o.pair2Top.join(' • ');
-    if($('pair2b'))$('pair2b').textContent=o.pair2Bottom.join(' • ');
-  }
+
+  const shared=o.pair2Shared||o.pair2Top||[];
+  if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
+  if($('pair2b'))$('pair2b').textContent=shared.slice(5,10).join(' • ');
   if($('pair3'))$('pair3').textContent=o.pair3Top.join(' • ');
   if($('engineStatus'))$('engineStatus').textContent=`MODE ${activeMode} • Pool ${o.poolSize} ตัว • คำนวณจาก ${history.length} งวดล่าสุด`;
 
   const metricLabels=document.querySelectorAll('.metric span');
   if(metricLabels.length>=2){metricLabels[0].textContent='รูด';metricLabels[1].textContent='รูด';}
   if($('sharedRud')){
-    if(activeMode==='B'){
-      $('sharedRud').classList.remove('hidden');
-      $('sharedRud').textContent=`รูด ${o.rudTop} • ${o.rudBottom}`;
-    }else if(o.rudTop===o.rudBottom){
-      $('sharedRud').classList.remove('hidden');
-      $('sharedRud').textContent=`รูด ${o.rudTop} • ${o.rudSupport??'-'}`;
-    }else $('sharedRud').classList.add('hidden');
+    $('sharedRud').classList.remove('hidden');
+    $('sharedRud').textContent=`รูด ${o.rudTop} • ${o.rudBottom}`;
   }
   if($('copyBtn'))$('copyBtn').disabled=false;
   if($('saveBtn'))$('saveBtn').disabled=false;
@@ -95,8 +86,8 @@ async function loadHistory(marketKey){
 
 function copyOutput(){
   const o=outputs?.[activeMode];if(!o)return;
-  const rud=activeMode==='B'?`รูด ${o.rudTop} • ${o.rudBottom}`:(o.rudTop===o.rudBottom?`รูด ${o.rudTop} • ${o.rudSupport}`:`รูด ${o.rudTop} • ${o.rudBottom}`);
-  const pair2=activeMode==='B'?(o.pair2Shared||o.pair2Top||[]).join(' • '):`${o.pair2Top.join(' • ')}\n${o.pair2Bottom.join(' • ')}`;
+  const rud=`รูด ${o.rudTop} • ${o.rudBottom}`;
+  const pair2=(o.pair2Shared||o.pair2Top||[]).join(' • ');
   const text=`${currentMarket?.market_name||''}\nMODE ${activeMode}\n\nWIN\n${o.win6}(${o.reserve7})\n\n${rud}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${o.pair3Top.join(' • ')}`;
   navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
 }
