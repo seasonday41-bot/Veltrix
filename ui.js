@@ -34,15 +34,9 @@ function installVisualPolish(){
         0 0 22px rgba(92,93,255,.16),
         0 0 40px rgba(220,63,255,.07)!important;
     }
-    .market-card.search-open{
-      z-index:500!important;
-    }
-    .market-card.search-open .search-wrap{
-      z-index:520!important;
-    }
-    .mode-card,.hero,.rud-card,.number-card,.history-card,.action-card{
-      z-index:1;
-    }
+    .market-card.search-open{z-index:500!important}
+    .market-card.search-open .search-wrap{z-index:520!important}
+    .mode-card,.hero,.rud-card,.number-card,.history-card,.action-card{z-index:1}
     .hero{
       box-shadow:
         inset 0 0 38px rgba(136,67,255,.16),
@@ -77,13 +71,53 @@ function installVisualPolish(){
         0 15px 32px rgba(0,0,0,.32),
         0 0 14px rgba(192,70,255,.18)!important;
     }
-    .section-icon,.number-icon,.metric-icon{
-      filter:drop-shadow(0 0 8px rgba(132,83,255,.35));
+    .section-icon,.number-icon,.metric-icon{filter:drop-shadow(0 0 8px rgba(132,83,255,.35))}
+
+    /* Pair3 display only: keep all five 3-digit picks on one iPhone-width line. */
+    .number-card.three .number-lines{
+      padding-left:48px!important;
+      padding-right:0!important;
+      overflow:hidden;
     }
-    .search-wrap{
-      position:relative;
-      z-index:90;
+    .number-card.three .number-line{
+      width:100%;
+      max-width:100%;
+      font-size:clamp(15px,4.35vw,20px)!important;
+      line-height:1.55!important;
+      letter-spacing:0!important;
+      word-spacing:0!important;
+      white-space:nowrap!important;
+      overflow:hidden;
+      text-overflow:clip;
+      font-variant-numeric:tabular-nums;
     }
+
+    /* History rows: stable 3-column alignment. */
+    .history-card{margin-bottom:8px!important}
+    .history-row{
+      min-height:42px!important;
+      grid-template-columns:1.08fr .78fr .72fr!important;
+      gap:7px!important;
+    }
+    .history-date{text-align:left;white-space:nowrap}
+    .history-result{text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .history-mode{text-align:right;white-space:nowrap}
+
+    /* Bottom tabs must not cover recent results. Keep them in document flow,
+       then sticky only once the user reaches the bottom section. */
+    .app{padding-bottom:14px!important}
+    .footer-nav{
+      position:sticky!important;
+      left:auto!important;
+      right:auto!important;
+      bottom:0!important;
+      z-index:50!important;
+      margin-top:4px;
+      padding:8px 14px calc(8px + env(safe-area-inset-bottom))!important;
+      background:linear-gradient(180deg,rgba(2,2,10,.18),rgba(2,2,10,.97) 30%)!important;
+    }
+
+    .search-wrap{position:relative;z-index:90}
     .market-suggestions{
       position:absolute;
       left:0;
@@ -137,12 +171,7 @@ function installVisualPolish(){
       font-size:11px;
       text-shadow:0 0 8px #7b8fff;
     }
-    .market-no-result{
-      padding:14px 13px;
-      color:#aeb2cf;
-      font-size:14px;
-      text-align:center;
-    }
+    .market-no-result{padding:14px 13px;color:#aeb2cf;font-size:14px;text-align:center}
     .search:focus{
       border-color:#78c9ff!important;
       box-shadow:
@@ -157,12 +186,14 @@ function installVisualPolish(){
       transform:translateY(12px);
       transition:opacity .14s ease,transform .14s ease;
     }
-    .footer-nav{
-      transition:opacity .14s ease,transform .14s ease;
-    }
+    .footer-nav{transition:opacity .14s ease,transform .14s ease}
     @media(max-width:390px){
       .market-suggestions{max-height:min(245px,39vh)}
       .market-suggestion{min-height:44px;font-size:15px}
+      .number-card.three .number-lines{padding-left:42px!important}
+      .number-card.three .number-line{font-size:clamp(14px,4.15vw,17px)!important}
+      .history-date,.history-mode{font-size:11px!important}
+      .history-result{font-size:15px!important}
     }
   `;
   document.head.appendChild(style);
