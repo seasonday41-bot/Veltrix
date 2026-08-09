@@ -24,6 +24,18 @@ const KPI=['rud_hit','win7_top3_full','win7_top2_full','win7_bottom_full','pair2
 function emptyAgg(){return Object.fromEntries(KPI.map(k=>[k,0]));}
 function addAgg(a,m){for(const k of KPI)if(m[k])a[k]++;}
 
+async function fetchAllResults(){
+  const all=[];let offset=0;
+  while(true){
+    const page=await db(`veltrix_market_results?select=id,market_id,draw_date,top3,bottom2,created_at&order=market_id.asc,draw_date.desc,created_at.desc&limit=1000&offset=${offset}`);
+    const rows=page||[];all.push(...rows);
+    if(rows.length<1000)break;
+    offset+=rows.length;
+    if(offset>10000)throw new Error('Unexpected result pagination size');
+  }
+  return all;
+}
+
 export default async function handler(req,res){
   allow(res,'GET');
   if(req.method!=='GET')return json(res,405,{error:'Method not allowed'});
@@ -31,7 +43,7 @@ export default async function handler(req,res){
     const summaryOnly=String(req.query?.summary||'')==='1';
     const [markets,rows]=await Promise.all([
       db('veltrix_markets?select=id,market_key,market_name&active=eq.true&order=market_key.asc'),
-      db('veltrix_market_results?select=id,market_id,draw_date,top3,bottom2,created_at&order=market_id.asc,draw_date.desc,created_at.desc')
+      fetchAllResults()
     ]);
     const byMarket=new Map();
     for(const r of rows||[]){if(!byMarket.has(r.market_id))byMarket.set(r.market_id,[]);const a=byMarket.get(r.market_id);if(a.length<20)a.push(r);}
@@ -55,7 +67,8 @@ export default async function handler(req,res){
     results.sort((a,b)=>Math.abs(b.edge_pp)-Math.abs(a.edge_pp)||a.market_name.localeCompare(b.market_name,'th'));
     const counts={A:results.filter(x=>x.winner==='A').length,B:results.filter(x=>x.winner==='B').length,TIE:results.filter(x=>x.winner==='TIE').length};
     const groups={A:results.filter(x=>x.winner==='A').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:x.cases})),B:results.filter(x=>x.winner==='B').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:x.cases})),TIE:results.filter(x=>x.winner==='TIE').map(x=>({name:x.market_name,edge_pp:x.edge_pp,cases:x.cases}))};
-    const base={engine:'MODE_A_B_SHARED_PIPELINE_WINDOW_ONLY_V7',basis:'latest 20 actual occurrences per market; walk-forward up to 15 cases/market',kpis:KPI,active_market_count:(markets||[]).length,market_count:results.length,total_cases:totalCases,winner_counts:counts,groups,skipped,global:{A:Object.fromEntries(KPI.map(k=>[k,{hits:global.A[k],pct:pct(global.A[k],totalCases)}])),B:Object.fromEntries(KPI.map(k=>[k,{hits:global.B[k],pct:pct(global.B[k],totalCases)}]))}};
+    const base={engine:'MODE_A_B_SHARED_PIPELINE_WINDOW_ONLY_V7',basis:'latest 20 actual occurrences per market; walk-forward up to 15 cases/market',source_result_rows:rows.length,kpis:KPI,active_market_count:(markets||[]).length,market_count:results.length,total_cases:totalCases,winner_counts:counts,groups,skipped,global:{A:Object.fromEntries(KPI.map(k=>[k,{hits:global.A[k],pct:pct(global.A[k],totalCases)}])),B:Object.fromEntries(KPI.map(k=>[k,{hits:global.B[k],pct:pct(global.B[k],totalCases)}]))}};
     return json(res,200,summaryOnly?base:{...base,markets:results});
-  }catch(e){return json(res,500,{error:e.message,detail:e.data||null});}
+  }catch(e){return json(res,500,{error:e.message,detail:e.data||null});
+  }
 }
