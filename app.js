@@ -14,8 +14,8 @@ function render(){
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
   if(activeMode==='B'){
     const shared=o.pair2Shared||o.pair2Top||[];
-    if($('pair2a'))$('pair2a').textContent=shared.join(' • ');
-    if($('pair2b'))$('pair2b').textContent='';
+    if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
+    if($('pair2b'))$('pair2b').textContent=shared.slice(5,10).join(' • ');
   }else{
     if($('pair2a'))$('pair2a').textContent=o.pair2Top.join(' • ');
     if($('pair2b'))$('pair2b').textContent=o.pair2Bottom.join(' • ');
