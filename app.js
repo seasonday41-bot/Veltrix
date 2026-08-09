@@ -1,6 +1,12 @@
 const $=id=>document.getElementById(id);
 let activeMode='B',currentMarket=null,history=[],outputs=null,allMarkets=[];
-const enginePromise=import('/lib/veltrix-engine.js?v=20260809-sharedv7');
+const enginePromise=import('/lib/veltrix-engine.js?v=20260810-dayyear-v8');
+
+function thaiTodayISO(){
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const get=t=>parts.find(x=>x.type===t)?.value||'';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
 
 function render(){
   if(!outputs)return;
@@ -79,7 +85,7 @@ async function loadHistory(marketKey){
       return;
     }
     const {calculateVeltrix}=await enginePromise;
-    outputs=calculateVeltrix(history);
+    outputs=calculateVeltrix(history,{targetDate:thaiTodayISO()});
     render();
   }catch(e){if($('engineStatus'))$('engineStatus').textContent=e.message;}
 }
