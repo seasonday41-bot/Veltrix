@@ -8,6 +8,19 @@ function thaiTodayISO(){
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+function ensureWinAssist(){
+  let box=$('winAssist');
+  if(box)return box;
+  const row=document.querySelector('.hero .win-row');
+  if(!row)return null;
+  box=document.createElement('div');
+  box.id='winAssist';
+  box.style.cssText='position:relative;margin:10px auto 2px;padding:8px 11px;width:min(100%,390px);display:grid;grid-template-columns:1fr 1fr;gap:8px;border:1px solid rgba(117,135,235,.38);border-radius:13px;background:rgba(4,8,29,.55);box-shadow:inset 0 0 16px rgba(70,75,180,.08);';
+  box.innerHTML='<div style="min-width:0;text-align:left"><div style="font-size:11px;color:#969bb9;margin-bottom:2px">วินประจำวัน</div><div id="dayWinAssist" style="font-size:17px;font-weight:800;letter-spacing:1.2px;color:#e9f4ff;white-space:nowrap">-------</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:10px"><div style="font-size:11px;color:#969bb9;margin-bottom:2px">วินประจำปี</div><div id="yearWinAssist" style="font-size:17px;font-weight:800;letter-spacing:1.2px;color:#f4e9ff;white-space:nowrap">----</div></div>';
+  row.insertAdjacentElement('afterend',box);
+  return box;
+}
+
 function render(){
   if(!outputs)return;
   const o=outputs[activeMode];
@@ -16,6 +29,9 @@ function render(){
   if($('modeNote'))$('modeNote').textContent=activeMode==='A'?'งวด 1–3 → รูด 2 → WIN7 → เจาะ 2 รวม 10 ชุด':'งวด 3–5 → รูด 2 → WIN7 → เจาะ 2 รวม 10 ชุด';
   if($('win6'))$('win6').textContent=o.win6;
   if($('reserve7'))$('reserve7').textContent=o.reserve7;
+  ensureWinAssist();
+  if($('dayWinAssist'))$('dayWinAssist').textContent=o.dayWin||'-------';
+  if($('yearWinAssist'))$('yearWinAssist').textContent=o.yearWin||'----';
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
 
@@ -72,7 +88,7 @@ async function loadMarkets(){
 async function loadHistory(marketKey){
   outputs=null;history=[];
   if($('saveStatus'))$('saveStatus').textContent='';
-  if(!marketKey){if($('win6'))$('win6').textContent='------';if($('reserve7'))$('reserve7').textContent='-';return;}
+  if(!marketKey){if($('win6'))$('win6').textContent='------';if($('reserve7'))$('reserve7').textContent='-';if($('dayWinAssist'))$('dayWinAssist').textContent='-------';if($('yearWinAssist'))$('yearWinAssist').textContent='----';return;}
   if($('engineStatus'))$('engineStatus').textContent='กำลังอ่านงวดล่าสุด...';
   try{
     const r=await fetch(`/api/history?market_key=${encodeURIComponent(marketKey)}`),j=await r.json();
