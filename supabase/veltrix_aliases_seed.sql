@@ -11,7 +11,8 @@ with alias_seed(alias, canonical_name) as (
     ('สิงคโปร์ VIP', 'หุ้นสิงคโปร์ VIP'),
     ('อังกฤษ VIP', 'หุ้นอังกฤษ VIP'),
     ('รัสเซีย VIP', 'หุ้นรัสเซีย VIP'),
-    ('เยอรมัน VIP', 'หุ้นเยอรมัน VIP')
+    ('เยอรมัน VIP', 'หุ้นเยอรมัน VIP'),
+    ('ไต้หวัน VIP', 'หุ้นไต้หวัน VIP')
 )
 insert into public.veltrix_market_aliases (market_id, alias, active)
 select m.id, s.alias, true
@@ -21,7 +22,7 @@ join public.veltrix_markets m
 where m.active = true
 on conflict do nothing;
 
--- Verify: should return 8 rows for this approved alias set.
+-- Verify approved aliases.
 select
   a.alias,
   m.market_name as canonical_market,
@@ -36,6 +37,7 @@ where lower(trim(a.alias)) in (
   lower('สิงคโปร์ VIP'),
   lower('อังกฤษ VIP'),
   lower('รัสเซีย VIP'),
-  lower('เยอรมัน VIP')
+  lower('เยอรมัน VIP'),
+  lower('ไต้หวัน VIP')
 )
 order by a.alias;
