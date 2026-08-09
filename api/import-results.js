@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import {db,json,allow} from './_db.js';
+import {ensureAutoSnapshots} from '../lib/auto-snapshot.js';
 
 const THAI_MONTHS={
   'มกราคม':1,'ม.ค.':1,'ม.ค':1,'กุมภาพันธ์':2,'ก.พ.':2,'ก.พ':2,'มีนาคม':3,'มี.ค.':3,'มี.ค':3,
@@ -108,6 +109,13 @@ export default async function handler(req,res){
     }
 
     const newItems=parsed.filter(x=>x.status==='NEW');
+
+    // AUTO LOCK: create MODE A/B snapshots from the database state BEFORE the
+    // new actual result is inserted. The incoming actual digits are never used
+    // by the prediction engine. Existing manual snapshots are preserved.
+    let autoLock={created:0,markets:0,skipped:0};
+    if(newItems.length)autoLock=await ensureAutoSnapshots(newItems);
+
     let insertedRows=[];
     if(newItems.length){
       insertedRows=await db('veltrix_market_results',{method:'POST',prefer:'return=representation',body:newItems.map(x=>({market_id:x.market_id,draw_date:x.draw_date,top3:x.top3,bottom2:x.bottom2,source:'manual_import',import_batch_id:batchId}))});
@@ -134,6 +142,12 @@ export default async function handler(req,res){
       }
     }
 
-    return json(res,200,{...base,settled_count:settled});
+    return json(res,200,{
+      ...base,
+      auto_locked_snapshot_count:autoLock.created,
+      auto_locked_market_count:autoLock.markets,
+      auto_lock_skipped:autoLock.skipped,
+      settled_count:settled
+    });
   }catch(e){return json(res,500,{error:e.message,detail:e.data||null});}
 }
