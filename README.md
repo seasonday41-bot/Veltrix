@@ -11,24 +11,23 @@ VELTRIX uses the existing Supabase project `six-digit-thai-lao`, but every VELTR
 3. Copy the whole file into a new SQL query.
 4. Run it once.
 
-The schema creates:
+The schema creates the VELTRIX tables plus two history views:
 
-- `veltrix_markets`
-- `veltrix_market_aliases`
-- `veltrix_market_results`
-- `veltrix_import_batches`
-- `veltrix_prediction_snapshots`
-- `veltrix_forward_audit`
-- `veltrix_engine_settings`
-- `veltrix_latest_20` view
+- `veltrix_latest_20` = rolling stored history
+- `veltrix_latest_10` = engine calculation history
 
-### Important data rules
+### Locked history rules
 
+- Store **maximum 20 actual occurrences per market**.
+- When occurrence #21 is inserted, the oldest occurrence for that market is deleted automatically.
+- VELTRIX calculations use only the **latest 10 actual occurrences**.
 - Markets do not need to draw every day.
-- VELTRIX reads the latest **occurrences** for each market, not calendar-day gaps.
+- Occurrence order is used, not calendar-day gaps.
+- MODE A uses occurrences 1–3 as primary and 3–5 as support.
+- MODE B uses occurrences 3–5 as primary and 1–3 as support.
 - Duplicate key is canonical market + draw date.
-- Same market/date/result = duplicate and should be skipped by importer.
-- Same market/date but different result = conflict; do not overwrite automatically.
+- Same market/date/result = duplicate and importer skips it.
+- Same market/date but different result = conflict; never overwrite automatically.
 - Market aliases are explicit only; no fuzzy remapping.
 - `top3` and `bottom2` are stored as text so leading zeroes are preserved.
 
@@ -47,13 +46,12 @@ Never put `SUPABASE_SERVICE_ROLE_KEY` in browser/client JavaScript or commit it 
 
 ### Page 1 — Engine
 
-- MODE A: draws 1–3 primary, draws 3–5 support
-- MODE B: draws 3–5 primary, draws 1–3 support
+- MODE A / MODE B
 - WIN6 + Reserve #7
 - Rud top / bottom (1 digit each)
 - Shared Rud + support digit when both sides agree
 - เจาะ 2 (5 top + 5 bottom internally, one compact UI block)
-- เจาะ 3 uses top Pair2 support
+- เจาะ 3 uses top Pair2 support only
 
 ### Page 2 — Results / Forward Tracker
 
@@ -66,4 +64,4 @@ Paste a whole daily result block such as:
 794-56 ลาวกาชาด
 ```
 
-The importer will parse, match canonical market names, detect duplicates/conflicts, save only new results, settle locked MODE A/B predictions, and prepare the next occurrence from each market's latest history.
+The importer parses the block, matches canonical market names, detects duplicates/conflicts, saves only new results, settles locked MODE A/B predictions, and then prepares the next occurrence from each market's latest history.
