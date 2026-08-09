@@ -9,6 +9,39 @@ const THAI_MONTHS={
   'ตุลาคม':10,'ต.ค.':10,'ต.ค':10,'พฤศจิกายน':11,'พ.ย.':11,'พ.ย':11,'ธันวาคม':12,'ธ.ค.':12,'ธ.ค':12
 };
 
+// Explicit aliases approved from the user's two-name market list.
+// These are importer fallbacks, so both forms work even before the SQL alias seed is run.
+const INPUT_MARKET_ALIASES={
+  'หุ้นจีนเช้า':'จีนเช้า',
+  'หุ้นจีนบ่าย':'จีนบ่าย',
+  'หุ้นฮั่งเส็งเช้า':'ฮั่งเส็งเช้า',
+  'หุ้นฮั่งเส็งบ่าย':'ฮั่งเส็งบ่าย',
+  'หุ้นไต้หวัน':'ไต้หวัน',
+  'หุ้นนิคเคอิบ่าย':'นิคเคอิบ่าย',
+  'หุ้นเกาหลี':'เกาหลี',
+  'หุ้นสิงคโปร์':'สิงคโปร์',
+  'หุ้นอินเดีย':'อินเดีย',
+  'หุ้นอียิปต์':'อียิปต์',
+  'หุ้นรัสเซีย':'รัสเซีย',
+  'หุ้นอังกฤษ':'อังกฤษ',
+  'หุ้นเยอรมัน':'เยอรมัน',
+  'หุ้นดาวโจนส์':'ดาวโจนส์',
+
+  'ดาวโจนส์ VIP':'หุ้นดาวโจนส์ VIP',
+  'ดาวโจนส์สตาร์':'หุ้นดาวโจนส์สตาร์',
+  'เกาหลี VIP':'หุ้นเกาหลี VIP',
+  'จีน VIP เช้า':'หุ้นจีน VIP เช้า',
+  'จีน VIP บ่าย':'หุ้นจีน VIP บ่าย',
+  'สิงคโปร์ VIP':'หุ้นสิงคโปร์ VIP',
+  'อังกฤษ VIP':'หุ้นอังกฤษ VIP',
+  'รัสเซีย VIP':'หุ้นรัสเซีย VIP',
+  'เยอรมัน VIP':'หุ้นเยอรมัน VIP',
+  'ไต้หวัน VIP':'หุ้นไต้หวัน VIP',
+  'นิคเคอิเช้า':'หุ้นนิคเคอิเช้า',
+  'หุ้นฮั่งเส็ง VIP เช้า':'ฮั่งเส็ง VIP เช้า',
+  'หุ้นฮั่งเส็ง VIP บ่าย':'ฮั่งเส็ง VIP บ่าย'
+};
+
 function normName(s=''){return s.trim().replace(/\s+/g,' ').toLocaleLowerCase('th-TH');}
 function cleanMarket(s=''){return s.replace(/^[^A-Za-z0-9ก-๙]+/u,'').trim().replace(/\s+/g,' ');}
 function isoDate(y,m,d){return `${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
@@ -66,6 +99,12 @@ export default async function handler(req,res){
     const nameMap=new Map();
     for(const m of markets||[])nameMap.set(normName(m.market_name),m);
     for(const a of aliases||[]){const m=marketById.get(a.market_id);if(m)nameMap.set(normName(a.alias),m);}
+
+    // Add the approved second naming style only when its canonical market exists.
+    for(const [alias,canonical] of Object.entries(INPUT_MARKET_ALIASES)){
+      const market=nameMap.get(normName(canonical));
+      if(market)nameMap.set(normName(alias),market);
+    }
 
     const currentMap=new Map(); const latestByMarket=new Map();
     for(const r of existing||[]){
