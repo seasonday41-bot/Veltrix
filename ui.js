@@ -3,6 +3,7 @@ const marketSelect=document.getElementById('marketSelect');
 const historyList=document.getElementById('historyList');
 const modeA=document.getElementById('modeA');
 const modeB=document.getElementById('modeB');
+const marketCard=marketSearch?.closest('.market-card');
 let allMarkets=[];
 let currentMode='B';
 let suggestionBox=null;
@@ -24,11 +25,23 @@ function installVisualPolish(){
         0 0 34px rgba(202,55,255,.055)!important;
     }
     .market-card{
+      z-index:4;
+      overflow:visible!important;
+      isolation:auto!important;
       box-shadow:
         inset 0 1px rgba(255,255,255,.08),
         0 18px 42px rgba(0,0,0,.42),
         0 0 22px rgba(92,93,255,.16),
         0 0 40px rgba(220,63,255,.07)!important;
+    }
+    .market-card.search-open{
+      z-index:500!important;
+    }
+    .market-card.search-open .search-wrap{
+      z-index:520!important;
+    }
+    .mode-card,.hero,.rud-card,.number-card,.history-card,.action-card{
+      z-index:1;
     }
     .hero{
       box-shadow:
@@ -67,26 +80,31 @@ function installVisualPolish(){
     .section-icon,.number-icon,.metric-icon{
       filter:drop-shadow(0 0 8px rgba(132,83,255,.35));
     }
-    .search-wrap{z-index:90}
+    .search-wrap{
+      position:relative;
+      z-index:90;
+    }
     .market-suggestions{
       position:absolute;
-      left:0;right:0;
+      left:0;
+      right:0;
       top:calc(100% + 8px);
-      z-index:120;
-      max-height:286px;
+      z-index:9999!important;
+      max-height:min(286px,42vh);
       overflow-y:auto;
+      overscroll-behavior:contain;
       -webkit-overflow-scrolling:touch;
       padding:7px;
-      border:1px solid rgba(116,169,255,.72);
+      border:1px solid rgba(116,169,255,.78);
       border-radius:17px;
-      background:linear-gradient(180deg,rgba(10,12,42,.985),rgba(5,7,28,.985));
+      background:linear-gradient(180deg,rgba(10,12,42,.995),rgba(5,7,28,.995));
       box-shadow:
-        inset 0 1px rgba(255,255,255,.07),
-        0 18px 38px rgba(0,0,0,.56),
-        0 0 18px rgba(75,139,255,.30),
-        0 0 32px rgba(207,69,255,.18);
-      backdrop-filter:blur(22px);
-      -webkit-backdrop-filter:blur(22px);
+        inset 0 1px rgba(255,255,255,.08),
+        0 22px 46px rgba(0,0,0,.65),
+        0 0 20px rgba(75,139,255,.36),
+        0 0 38px rgba(207,69,255,.22);
+      backdrop-filter:blur(24px);
+      -webkit-backdrop-filter:blur(24px);
       transform-origin:top center;
       animation:veltrixDrop .14s ease-out;
     }
@@ -110,8 +128,8 @@ function installVisualPolish(){
     }
     .market-suggestion:last-child{border-bottom:0}
     .market-suggestion:active,.market-suggestion.selected{
-      background:linear-gradient(90deg,rgba(42,111,226,.32),rgba(150,49,218,.28));
-      box-shadow:inset 0 0 0 1px rgba(113,177,255,.20),0 0 15px rgba(122,79,255,.15);
+      background:linear-gradient(90deg,rgba(42,111,226,.38),rgba(150,49,218,.34));
+      box-shadow:inset 0 0 0 1px rgba(113,177,255,.24),0 0 17px rgba(122,79,255,.18);
     }
     .market-suggestion:before{
       content:'✦';
@@ -133,8 +151,17 @@ function installVisualPolish(){
         0 0 18px rgba(74,153,255,.32),
         0 0 30px rgba(199,68,255,.12)!important;
     }
+    body.market-search-open .footer-nav{
+      opacity:.16;
+      pointer-events:none;
+      transform:translateY(12px);
+      transition:opacity .14s ease,transform .14s ease;
+    }
+    .footer-nav{
+      transition:opacity .14s ease,transform .14s ease;
+    }
     @media(max-width:390px){
-      .market-suggestions{max-height:245px}
+      .market-suggestions{max-height:min(245px,39vh)}
       .market-suggestion{min-height:44px;font-size:15px}
     }
   `;
@@ -151,6 +178,11 @@ function ensureSuggestionBox(){
   return suggestionBox;
 }
 
+function setSearchLayer(open){
+  marketCard?.classList.toggle('search-open',open);
+  document.body.classList.toggle('market-search-open',open);
+}
+
 function matchedMarkets(){
   const q=normalize(marketSearch?.value||'');
   return q?allMarkets.filter(m=>normalize(m.label).includes(q)):allMarkets;
@@ -160,7 +192,10 @@ function renderSuggestions(forceOpen=false){
   if(!marketSearch||!allMarkets.length)return;
   const box=ensureSuggestionBox();
   const q=normalize(marketSearch.value);
-  if(!forceOpen&&!q){box.classList.add('hidden');return;}
+  if(!forceOpen&&!q){
+    closeSuggestions();
+    return;
+  }
 
   const matched=matchedMarkets();
   box.replaceChildren();
@@ -184,11 +219,14 @@ function renderSuggestions(forceOpen=false){
       box.appendChild(btn);
     }
   }
+
   box.classList.remove('hidden');
+  setSearchLayer(true);
 }
 
 function closeSuggestions(){
   suggestionBox?.classList.add('hidden');
+  setSearchLayer(false);
 }
 
 function selectMarket(m){
@@ -214,6 +252,11 @@ function captureMarkets(){
 marketSearch?.addEventListener('focus',()=>renderSuggestions(true));
 marketSearch?.addEventListener('input',()=>renderSuggestions(true));
 marketSearch?.addEventListener('search',()=>renderSuggestions(true));
+marketSearch?.addEventListener('blur',()=>{
+  setTimeout(()=>{
+    if(document.activeElement!==marketSearch)closeSuggestions();
+  },120);
+});
 marketSearch?.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     closeSuggestions();
