@@ -359,3 +359,4 @@ document.addEventListener('dblclick',e=>{
 },{passive:false});
 
 installVisualPolish();
+import('./history-ui.js?v=20260809-1');
