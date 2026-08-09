@@ -1,31 +1,118 @@
 const $=id=>document.getElementById(id);
-let activeMode='B',currentMarket=null,history=[],outputs=null;
-const DIGITS=[...'0123456789'];
-function chars(r){return `${r.top3}${r.bottom2}`;}
-function pool(rows){const s=new Set();for(const r of rows)for(const d of chars(r))s.add(d);return s;}
-function sat(n){if(n<=6)return 1;if(n===7)return .8;if(n===8)return .5;if(n===9)return .25;return 0;}
-function counts(rows,sel=chars){const m=Object.fromEntries(DIGITS.map(d=>[d,0]));for(const r of rows)for(const d of sel(r))m[d]++;return m;}
-function normMap(m){const mx=Math.max(1,...Object.values(m));return Object.fromEntries(DIGITS.map(d=>[d,(m[d]||0)/mx]));}
-function gapAny(d,rows){const i=rows.findIndex(r=>chars(r).includes(d));return i<0?1:Math.min(i+1,8)/8;}
-function bottomGap(d,rows){const i=rows.findIndex(r=>r.bottom2.includes(d));return i<0?8:Math.min(i+1,8);}
-function recentScore(d,rows,sel){const w=[3,2,1];let s=0;rows.slice(0,3).forEach((r,i)=>{for(const x of sel(r))if(x===d)s+=w[i];});return s;}
-function modeRows(rows,mode){const A=rows.slice(0,3),B=rows.slice(2,5);return mode==='B'?{primary:B,support:A}:{primary:A,support:B};}
-function rudEngine(rows,mode){const {primary,support}=modeRows(rows,mode),topDNA=counts(primary,r=>r.top3.slice(-2)),botDNA=counts(primary,r=>r.bottom2),topRecent=Object.fromEntries(DIGITS.map(d=>[d,recentScore(d,primary,r=>r.top3.slice(-2))])),botRecent=Object.fromEntries(DIGITS.map(d=>[d,recentScore(d,primary,r=>r.bottom2)])),supTop=counts(support,r=>r.top3.slice(-2)),supBot=counts(support,r=>r.bottom2);const top=[...DIGITS].sort((a,b)=>botDNA[b]-botDNA[a]||topRecent[b]-topRecent[a]||topDNA[b]-topDNA[a]||supTop[b]-supTop[a]||supBot[b]-supBot[a]||(+a)-(+b))[0],bottom=[...DIGITS].sort((a,b)=>bottomGap(b,primary)-bottomGap(a,primary)||botDNA[b]-botDNA[a]||botRecent[b]-botRecent[a]||supBot[b]-supBot[a]||(+a)-(+b))[0];let supportDigit=null;if(top===bottom)supportDigit=[...DIGITS].filter(d=>d!==top).sort((a,b)=>botDNA[b]-botDNA[a]||botRecent[b]-botRecent[a]||topDNA[b]-topDNA[a]||supBot[b]-supBot[a]||(+a)-(+b))[0];return {top,bottom,support:supportDigit};}
-function rankMode(rows,mode,rud){const Arows=rows.slice(0,3),Brows=rows.slice(2,5),A=pool(Arows),B=pool(Brows),bFreq=normMap(counts(Brows)),persistence=Object.fromEntries(DIGITS.map(d=>[d,Brows.filter(r=>chars(r).includes(d)).length/3])),recency=Object.fromEntries(DIGITS.map(d=>{const w=[3,2,1];let s=0;Brows.forEach((r,i)=>{if(chars(r).includes(d))s+=w[i];});return [d,s/6];})),score={};for(const d of DIGITS){const gap=gapAny(d,rows);if(mode==='A'){if(A.size===10)score[d]=(B.has(d)?sat(B.size):0)+.5*gap;else if(A.size===9)score[d]=(A.has(d)?sat(A.size):0)+.5*(B.has(d)?sat(B.size):0)+.5*gap;else score[d]=(A.has(d)?sat(A.size):0)+.5*gap;}else{if(B.size<=7)score[d]=(B.has(d)?sat(B.size):0)+.5*gap;else if(B.size===8){const rudHit=(d===rud.top||d===rud.bottom||d===rud.support)?1:0;score[d]=.25*(B.has(d)?1:0)+.10*bFreq[d]+.20*persistence[d]+.05*recency[d]+.10*(A.has(d)?1:0)+.25*gap+.05*rudHit;}else if(B.size===9)score[d]=(B.has(d)?sat(B.size):0)+.5*(A.has(d)?sat(A.size):0)+.5*gap;else score[d]=(A.has(d)?sat(A.size):0)+.5*gap;}}const ranked=[...DIGITS].sort((a,b)=>score[b]-score[a]||(+a)-(+b));return {ranked,score,A:[...A].sort().join(''),B:[...B].sort().join(''),poolSize:mode==='A'?A.size:B.size};}
-function canonPair(p){return [...p].sort().join('');}
-function tripleKey(s){return [...s].sort().join('');}
-function rud2Digits(rud){return rud.top===rud.bottom?[rud.top,rud.support].filter(Boolean):[rud.top,rud.bottom];}
-function modeBWin7(rank,rud){const out=[];for(const d of rud2Digits(rud))if(d&&!out.includes(d))out.push(d);for(const d of rank.ranked)if(!out.includes(d)){out.push(d);if(out.length===7)break;}return out.slice(0,7);}
-function pairAffinity(rows,a,b,kind='top'){const {primary,support}=modeRows(rows,'B');let s=0;const hit=(r,sel,w)=>{const x=sel(r);if(x.includes(a)&&x.includes(b))s+=w;};if(kind==='top'){primary.forEach((r,i)=>hit(r,x=>x.top3,3-i*.45));support.forEach((r,i)=>hit(r,x=>x.top3,1.05-i*.15));primary.forEach((r,i)=>hit(r,chars,.55-i*.08));}else{primary.forEach((r,i)=>hit(r,x=>x.bottom2,3-i*.45));support.forEach((r,i)=>hit(r,x=>x.bottom2,1.05-i*.15));primary.forEach((r,i)=>hit(r,chars,.35-i*.05));}return s;}
-function clusteredPairs(rows,win7,rank,rud,kind='top'){const rd=new Set(rud2Digits(rud)),anchor=kind==='top'?rud.top:rud.bottom,c=[];for(let i=0;i<win7.length;i++)for(let j=i;j<win7.length;j++){const a=win7[i],b=win7[j];if(i===j&&!modeRows(rows,'B').primary.some(r=>(kind==='top'?r.top3:r.bottom2).includes(a+a)))continue;const affinity=pairAffinity(rows,a,b,kind),ai=((rank.score[a]||0)+(rank.score[b]||0))/2,rudBonus=(rd.has(a)?.4:0)+(rd.has(b)?.4:0),anchorHit=a===anchor||b===anchor,repeatBonus=a===b?.35:0;c.push({p:`${a}${b}`,key:canonPair(`${a}${b}`),score:affinity+ai*.45+rudBonus+repeatBonus+(anchorHit?.9:0),anchorHit});}c.sort((x,y)=>y.score-x.score||(+x.p)-(+y.p));const out=[],seen=new Set(),take=x=>{if(seen.has(x.key))return false;seen.add(x.key);out.push(x.p);return true;};for(const x of c)if(x.anchorHit){take(x);if(out.length===3)break;}for(const x of c){if(out.length===5)break;take(x);}return out.slice(0,5);}
-function hybridTriples(rows,win7,rank,rud,pairs){const {primary,support}=modeRows(rows,'B'),rd=new Set(rud2Digits(rud)),anchor=rud.top,c=[],seen=new Set();for(let pi=0;pi<pairs.length;pi++)for(const d of win7){const t=`${pairs[pi]}${d}`,key=tripleKey(t);if(seen.has(key))continue;const ds=[...t],unique=[...new Set(ds)];let hist=0;primary.forEach((r,i)=>{const k=tripleKey(r.top3);if(k===key)hist+=3-i*.5;else hist+=unique.filter(x=>r.top3.includes(x)).length*.22;});support.forEach((r,i)=>{hist+=unique.filter(x=>r.top3.includes(x)).length*(.12-i*.02);});const ai=ds.reduce((s,x)=>s+(rank.score[x]||0),0)/3,pairBase=(pairs.length-pi)/pairs.length,rudBonus=ds.some(x=>rd.has(x))?.35:0,anchorHit=ds.includes(anchor),score=1.15*pairBase+.55*ai+hist+rudBonus+(anchorHit?.8:0);c.push({t,key,score,anchorHit});seen.add(key);}c.sort((a,b)=>b.score-a.score||(+a.t)-(+b.t));const out=[],used=new Set(),take=x=>{if(used.has(x.key))return false;used.add(x.key);out.push(x.t);return true;};for(const x of c)if(x.anchorHit){take(x);if(out.length===3)break;}for(const x of c){if(out.length===5)break;take(x);}return out.slice(0,5);}
-function legacyPair2(rows,rank,rud,mode){const {primary,support}=modeRows(rows,mode),source=[...primary,...support],top=[],seen=new Set();for(const r of source){const p=r.top3.slice(-2),c=canonPair(p);if(!seen.has(c)){seen.add(c);top.push(p);}if(top.length===4)break;}for(const d of rank.ranked){const p=`${rud.top}${d}`,c=canonPair(p);if(!seen.has(c)){seen.add(c);top.push(p);break;}}while(top.length<5){const a=rank.ranked[top.length%rank.ranked.length],b=rank.ranked[(top.length+1)%rank.ranked.length],p=`${a}${b}`,c=canonPair(p);if(!seen.has(c)){seen.add(c);top.push(p);}else top.push(`${a}${a}`);}const bottom=[],sb=new Set();for(const d of rank.ranked){const p=`${rud.bottom}${d}`,c=canonPair(p);if(!sb.has(c)){sb.add(c);bottom.push(p);}if(bottom.length===5)break;}return {top:top.slice(0,5),bottom:bottom.slice(0,5)};}
-function legacyPair3(rows,rank,rud,pairs,mode){const {primary}=modeRows(rows,mode),c=[],seen=new Set();for(let i=0;i<pairs.length;i++)for(const d of rank.ranked){const t=`${pairs[i]}${d}`,key=tripleKey(t);if(seen.has(key))continue;let s=(pairs.length-i)/pairs.length+(rank.score[d]||0);if(primary.some(r=>tripleKey(r.top3)===key))s+=1;c.push({t,key,s});seen.add(key);}return c.sort((a,b)=>b.s-a.s||(+a.t)-(+b.t)).slice(0,5).map(x=>x.t);}
-function calculate(rows){const clean=(rows||[]).slice(0,10);if(clean.length<5)return null;const result={};for(const mode of ['A','B']){const rud=rudEngine(clean,mode),rank=rankMode(clean,mode,rud);if(mode==='B'){const win7=modeBWin7(rank,rud),p2top=clusteredPairs(clean,win7,rank,rud,'top'),p2bottom=clusteredPairs(clean,win7,rank,rud,'bottom'),p3=hybridTriples(clean,win7,rank,rud,p2top),score={...rank.score};for(let i=0;i<win7.length;i++)score[win7[i]]=(score[win7[i]]||0)+(7-i)*1e-6;result[mode]={mode,win6:win7.slice(0,6).join(''),reserve7:win7[6],rudTop:rud.top,rudBottom:rud.bottom,rudSupport:rud.support,rud2:rud2Digits(rud),pair2Top:p2top,pair2Bottom:p2bottom,pair3Top:p3,poolA:rank.A,poolB:rank.B,poolSize:rank.poolSize,rankScores:score,baseRankScores:rank.score,fusionBonus:null,hybridVersion:'B_RUD_ANCHOR_CLUSTER_V2'};}else{const p2=legacyPair2(clean,rank,rud,mode),p3=legacyPair3(clean,rank,rud,p2.top,mode);result[mode]={mode,win6:rank.ranked.slice(0,6).join(''),reserve7:rank.ranked[6],rudTop:rud.top,rudBottom:rud.bottom,rudSupport:rud.support,pair2Top:p2.top,pair2Bottom:p2.bottom,pair3Top:p3,poolA:rank.A,poolB:rank.B,poolSize:rank.poolSize,rankScores:rank.score,baseRankScores:rank.score,fusionBonus:null};}}return result;}
-function render(){if(!outputs)return;const o=outputs[activeMode];$('modeA').classList.toggle('active',activeMode==='A');$('modeB').classList.toggle('active',activeMode==='B');$('modeNote').textContent=activeMode==='A'?'งวด 1–3 เป็นหลัก • งวด 3–5 เป็นตัวสนับสนุน':'งวด 3–5 → รูด 2 → WIN7 → Rud Anchor + Cluster';$('win6').textContent=o.win6;$('reserve7').textContent=o.reserve7;$('rudTop').textContent=o.rudTop;$('rudBottom').textContent=o.rudBottom;$('pair2a').textContent=o.pair2Top.join(' • ');$('pair2b').textContent=o.pair2Bottom.join(' • ');$('pair3').textContent=o.pair3Top.join(' • ');$('engineStatus').textContent=`MODE ${activeMode} • Pool ${o.poolSize} ตัว • คำนวณจาก ${history.length} งวดล่าสุด`;if(o.rudTop===o.rudBottom){$('sharedRud').classList.remove('hidden');$('sharedRud').textContent=`รูด 2 ตัว ${o.rudTop} • ${o.rudSupport??'-'}`;}else $('sharedRud').classList.add('hidden');$('copyBtn').disabled=false;$('saveBtn').disabled=false;}
-function renderHistory(){$('historyList').innerHTML=history.slice(0,5).map((r,i)=>`<div class="item"><div class="item-head"><span>งวด ${i+1}</span><span>${r.top3}-${r.bottom2}</span></div><div class="item-sub">${r.draw_date||''}</div></div>`).join('');}
-async function loadMarkets(){try{const r=await fetch('/api/markets'),j=await r.json();if(!r.ok)throw new Error(j.error||'โหลดตลาดไม่ได้');const opts=(j.markets||[]).map(m=>`<option value="${m.market_key}">${m.market_name}</option>`).join('');$('marketSelect').innerHTML=`<option value="">เลือกตลาด</option>${opts}`;if(!j.markets?.length)$('marketStatus').textContent='ยังไม่มีรายชื่อตลาดใน veltrix_markets';}catch(e){$('marketSelect').innerHTML='<option value="">เชื่อมฐานข้อมูลไม่สำเร็จ</option>';$('marketStatus').textContent=e.message;}}
-async function loadHistory(marketKey){outputs=null;history=[];$('saveStatus').textContent='';if(!marketKey){$('win6').textContent='------';$('reserve7').textContent='-';return;}$('engineStatus').textContent='กำลังอ่านงวดล่าสุด...';try{const r=await fetch(`/api/history?market_key=${encodeURIComponent(marketKey)}`),j=await r.json();if(!r.ok)throw new Error(j.error||'อ่านย้อนหลังไม่ได้');currentMarket=j.market;history=j.history||[];renderHistory();if(history.length<5){$('engineStatus').textContent=`มีข้อมูล ${history.length} งวด • ต้องมีอย่างน้อย 5 งวด`;$('copyBtn').disabled=true;$('saveBtn').disabled=true;return;}outputs=calculate(history);render();}catch(e){$('engineStatus').textContent=e.message;}}
-function copyOutput(){const o=outputs?.[activeMode];if(!o)return;const rud=o.rudTop===o.rudBottom?`รูด ${o.rudTop} • ${o.rudSupport}`:`รูด ${o.rudTop} • ${o.rudBottom}`,text=`${currentMarket?.market_name||''}\nMODE ${activeMode}\n\nWIN\n${o.win6}(${o.reserve7})\n\n${rud}\n\nเจาะ 2\n${o.pair2Top.join(' • ')}\n${o.pair2Bottom.join(' • ')}\n\nเจาะ 3\n${o.pair3Top.join(' • ')}`;navigator.clipboard.writeText(text).then(()=>$('saveStatus').textContent='คัดลอกแล้ว');}
-async function saveSnapshots(){if(!outputs||!currentMarket||!history[0])return;$('saveBtn').disabled=true;$('saveStatus').textContent='กำลังล็อก MODE A / B...';try{const payload={market_id:currentMarket.id,source_result_id:history[0].id,predictions:Object.values(outputs)},r=await fetch('/api/snapshot',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw new Error(j.error||'บันทึกไม่ได้');$('saveStatus').textContent=j.already_locked?'Snapshot นี้ถูกล็อกไว้แล้ว':'ล็อก MODE A / B เรียบร้อย';}catch(e){$('saveStatus').textContent=e.message;}finally{$('saveBtn').disabled=false;}}
-$('modeA').onclick=()=>{activeMode='A';render();};$('modeB').onclick=()=>{activeMode='B';render();};$('marketSelect').onchange=e=>loadHistory(e.target.value);$('copyBtn').onclick=copyOutput;$('saveBtn').onclick=saveSnapshots;loadMarkets();
+let activeMode='B',currentMarket=null,history=[],outputs=null,allMarkets=[];
+const enginePromise=import('/lib/veltrix-engine.js');
+
+function render(){
+  if(!outputs)return;
+  const o=outputs[activeMode];
+  $('modeA')?.classList.toggle('active',activeMode==='A');
+  $('modeB')?.classList.toggle('active',activeMode==='B');
+  if($('modeNote'))$('modeNote').textContent=activeMode==='A'?'งวด 1–3 เป็นหลัก • งวด 3–5 เป็นตัวสนับสนุน':'งวด 3–5 → CROSS RUD 2 → WIN7 → Shared Cluster';
+  if($('win6'))$('win6').textContent=o.win6;
+  if($('reserve7'))$('reserve7').textContent=o.reserve7;
+  if($('rudTop'))$('rudTop').textContent=o.rudTop;
+  if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
+  if($('pair2a'))$('pair2a').textContent=o.pair2Top.join(' • ');
+  if($('pair2b'))$('pair2b').textContent=o.pair2Bottom.join(' • ');
+  if($('pair3'))$('pair3').textContent=o.pair3Top.join(' • ');
+  if($('engineStatus'))$('engineStatus').textContent=`MODE ${activeMode} • Pool ${o.poolSize} ตัว • คำนวณจาก ${history.length} งวดล่าสุด`;
+
+  const metricLabels=document.querySelectorAll('.metric span');
+  if(metricLabels.length>=2){
+    metricLabels[0].textContent=activeMode==='B'?'CROSS RUD A':'รูดบน';
+    metricLabels[1].textContent=activeMode==='B'?'CROSS RUD B':'รูดล่าง';
+  }
+  if($('sharedRud')){
+    if(activeMode==='B'){
+      $('sharedRud').classList.remove('hidden');
+      $('sharedRud').textContent=`CROSS RUD 2 : ${o.rudTop} • ${o.rudBottom}`;
+    }else if(o.rudTop===o.rudBottom){
+      $('sharedRud').classList.remove('hidden');
+      $('sharedRud').textContent=`รูด 2 ตัว ${o.rudTop} • ${o.rudSupport??'-'}`;
+    }else $('sharedRud').classList.add('hidden');
+  }
+  if($('copyBtn'))$('copyBtn').disabled=false;
+  if($('saveBtn'))$('saveBtn').disabled=false;
+}
+
+function renderHistory(){
+  if(!$('historyList'))return;
+  $('historyList').innerHTML=history.slice(0,5).map((r,i)=>`<div class="item"><div class="item-head"><span>งวด ${i+1}</span><span>${r.top3}-${r.bottom2}</span></div><div class="item-sub">${r.draw_date||''}</div></div>`).join('');
+}
+
+function renderMarketOptions(markets){
+  if(!$('marketSelect'))return;
+  const current=$('marketSelect').value;
+  const opts=markets.map(m=>`<option value="${m.market_key}">${m.market_name}</option>`).join('');
+  $('marketSelect').innerHTML=`<option value="">เลือกตลาด</option>${opts}`;
+  if(markets.some(m=>m.market_key===current))$('marketSelect').value=current;
+}
+
+async function loadMarkets(){
+  try{
+    const r=await fetch('/api/markets'),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'โหลดตลาดไม่ได้');
+    allMarkets=j.markets||[];
+    renderMarketOptions(allMarkets);
+    if(!allMarkets.length&&$('marketStatus'))$('marketStatus').textContent='ยังไม่มีรายชื่อตลาดใน veltrix_markets';
+    const search=$('marketSearch')||$('searchInput')||document.querySelector('input.search');
+    if(search&&!search.dataset.bound){
+      search.dataset.bound='1';
+      search.addEventListener('input',()=>{
+        const q=search.value.trim().toLowerCase();
+        renderMarketOptions(!q?allMarkets:allMarkets.filter(m=>m.market_name.toLowerCase().includes(q)||m.market_key.toLowerCase().includes(q)));
+      });
+    }
+  }catch(e){
+    if($('marketSelect'))$('marketSelect').innerHTML='<option value="">เชื่อมฐานข้อมูลไม่สำเร็จ</option>';
+    if($('marketStatus'))$('marketStatus').textContent=e.message;
+  }
+}
+
+async function loadHistory(marketKey){
+  outputs=null;history=[];
+  if($('saveStatus'))$('saveStatus').textContent='';
+  if(!marketKey){if($('win6'))$('win6').textContent='------';if($('reserve7'))$('reserve7').textContent='-';return;}
+  if($('engineStatus'))$('engineStatus').textContent='กำลังอ่านงวดล่าสุด...';
+  try{
+    const r=await fetch(`/api/history?market_key=${encodeURIComponent(marketKey)}`),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'อ่านย้อนหลังไม่ได้');
+    currentMarket=j.market;history=j.history||[];renderHistory();
+    if(history.length<5){
+      if($('engineStatus'))$('engineStatus').textContent=`มีข้อมูล ${history.length} งวด • ต้องมีอย่างน้อย 5 งวด`;
+      if($('copyBtn'))$('copyBtn').disabled=true;
+      if($('saveBtn'))$('saveBtn').disabled=true;
+      return;
+    }
+    const {calculateVeltrix}=await enginePromise;
+    outputs=calculateVeltrix(history);
+    render();
+  }catch(e){if($('engineStatus'))$('engineStatus').textContent=e.message;}
+}
+
+function copyOutput(){
+  const o=outputs?.[activeMode];if(!o)return;
+  const rud=activeMode==='B'?`CROSS RUD ${o.rudTop} • ${o.rudBottom}`:(o.rudTop===o.rudBottom?`รูด ${o.rudTop} • ${o.rudSupport}`:`รูด ${o.rudTop} • ${o.rudBottom}`);
+  const text=`${currentMarket?.market_name||''}\nMODE ${activeMode}\n\nWIN\n${o.win6}(${o.reserve7})\n\n${rud}\n\nเจาะ 2\n${o.pair2Top.join(' • ')}\n${o.pair2Bottom.join(' • ')}\n\nเจาะ 3\n${o.pair3Top.join(' • ')}`;
+  navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
+}
+
+async function saveSnapshots(){
+  if(!outputs||!currentMarket||!history[0])return;
+  if($('saveBtn'))$('saveBtn').disabled=true;
+  if($('saveStatus'))$('saveStatus').textContent='กำลังล็อก MODE A / B...';
+  try{
+    const payload={market_id:currentMarket.id,source_result_id:history[0].id,predictions:Object.values(outputs)};
+    const r=await fetch('/api/snapshot',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'บันทึกไม่ได้');
+    if($('saveStatus'))$('saveStatus').textContent=j.already_locked?'Snapshot นี้ถูกล็อกไว้แล้ว':'ล็อก MODE A / B เรียบร้อย';
+  }catch(e){if($('saveStatus'))$('saveStatus').textContent=e.message;}
+  finally{if($('saveBtn'))$('saveBtn').disabled=false;}
+}
+
+if($('modeA'))$('modeA').onclick=()=>{activeMode='A';render();};
+if($('modeB'))$('modeB').onclick=()=>{activeMode='B';render();};
+if($('marketSelect'))$('marketSelect').onchange=e=>loadHistory(e.target.value);
+if($('copyBtn'))$('copyBtn').onclick=copyOutput;
+if($('saveBtn'))$('saveBtn').onclick=saveSnapshots;
+loadMarkets();
