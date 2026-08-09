@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 let activeMode='B',currentMarket=null,history=[],outputs=null,allMarkets=[];
-const enginePromise=import('/lib/veltrix-engine.js');
+const enginePromise=import('/lib/veltrix-engine.js?v=20260809-p3v5');
 
 function render(){
   if(!outputs)return;
