@@ -6,57 +6,30 @@
   <meta name="theme-color" content="#02070d" />
   <meta name="color-scheme" content="dark" />
   <title>VELTRIX Results</title>
-  <link rel="stylesheet" href="/styles.css?v=20260809-2" />
+  <style>
+    :root{--bg:#02070d;--panel:rgba(5,18,30,.80);--line:rgba(92,190,247,.38);--text:#f3f9ff;--muted:#98b5ca;--cyan:#52d2ff;--danger:#ff8d9b;--warn:#ffd27d}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#02070d;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+    body{min-height:100vh;background-image:radial-gradient(circle at 12% 5%,rgba(42,132,190,.45) 0 14%,rgba(54,184,244,.22) 15%,transparent 22%),radial-gradient(ellipse at 85% 22%,rgba(0,115,190,.20),transparent 38%),radial-gradient(circle at 15% 22%,rgba(255,255,255,.85) 0 1px,transparent 1.5px),radial-gradient(circle at 78% 18%,rgba(117,213,255,.8) 0 1px,transparent 1.5px),linear-gradient(180deg,#02070d,#03131f 46%,#02070d);background-attachment:fixed}
+    .app{width:min(100%,560px);margin:0 auto;padding:18px 14px 108px}.brand{padding:16px 5px 22px}.brand h1{margin:0;font-size:36px;letter-spacing:6px;font-weight:900;background:linear-gradient(#fff,#caeeff 55%,#65d3ff);-webkit-background-clip:text;color:transparent}.brand p{margin:7px 0 0;color:#a8c0d1;font-size:14px;letter-spacing:.7px}
+    .card{background:linear-gradient(180deg,rgba(7,28,45,.82),rgba(3,15,25,.80));border:1px solid var(--line);border-radius:20px;padding:15px;margin-bottom:12px;box-shadow:0 14px 36px rgba(0,0,0,.32);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px)}
+    .label,.section-title{color:#a9c4d6;font-size:13px;letter-spacing:.8px;margin-bottom:9px}.textarea{width:100%;min-height:245px;border:1px solid rgba(94,190,245,.42);border-radius:15px;background:rgba(2,12,21,.88);color:#f4fbff;padding:14px;font-size:16px;line-height:1.45;resize:vertical;outline:none}.textarea:focus{border-color:#55d3ff;box-shadow:0 0 20px rgba(72,207,255,.12)}.status{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.45}.small-line{font-size:15px;line-height:1.75;color:#d9e9f4}
+    .btn,.nav-btn{border:1px solid rgba(87,182,238,.40);background:rgba(2,14,24,.84);color:#dff7ff;border-radius:15px;padding:13px;font-weight:800;font-size:15px}.btn{width:100%}.btn.primary{border-color:#66d8ff;background:linear-gradient(180deg,rgba(16,107,166,.92),rgba(5,64,105,.94));box-shadow:0 0 22px rgba(53,190,250,.28)}.btn:disabled{opacity:.38}
+    .summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.summary .box{background:rgba(2,13,22,.76);border:1px solid rgba(90,180,235,.30);border-radius:15px;padding:13px}.summary .box strong{display:block;font-size:25px;margin-bottom:3px}.muted{color:var(--muted)}.good{color:#72e5ff}.warn{color:var(--warn)}.bad{color:var(--danger)}
+    .list{display:flex;flex-direction:column;gap:8px}.item{border:1px solid rgba(82,174,230,.28);background:rgba(2,13,22,.72);border-radius:14px;padding:11px 12px}.item-head{display:flex;justify-content:space-between;gap:8px;font-weight:760}.item-sub{color:var(--muted);font-size:13px;margin-top:5px}.hidden{display:none!important}
+    .footer-nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(1,7,12,.88);border-top:1px solid rgba(80,175,230,.28);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);padding:9px 12px calc(9px + env(safe-area-inset-bottom))}.footer-nav .inner{width:min(100%,560px);margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}.nav-btn{text-decoration:none;text-align:center}.nav-btn.active{color:#e5f9ff;border-color:#5bd4ff;background:linear-gradient(180deg,rgba(14,87,136,.86),rgba(5,51,85,.90));box-shadow:0 0 20px rgba(44,181,240,.18)}
+    @media(max-width:390px){.app{padding-left:11px;padding-right:11px}.card{border-radius:18px;padding:13px}.brand h1{font-size:32px}}
+  </style>
+  <link rel="stylesheet" href="/styles.css?v=20260809-3" />
 </head>
 <body>
   <main class="app">
-    <header class="brand">
-      <h1>VELTRIX</h1>
-      <p>Results / Forward Tracker</p>
-    </header>
-
-    <section class="card">
-      <div class="label">วางผลทั้งก้อน</div>
-      <textarea id="rawText" class="textarea" placeholder="สรุปผลหวยประจำวันที่ 08 สิงหาคม 2569\n787-21 🇺🇸 ดาวโจนส์ VIP\n161-08 🇺🇸 ดาวโจนส์สตาร์\n794-56 🇱🇦 ลาวกาชาด"></textarea>
-      <div class="status">ระบบอ่านเฉพาะตลาดที่มีใน VELTRIX • ตลาดที่ไม่ออกวันนี้ไม่ถือว่าขาด</div>
-      <div style="height:9px"></div>
-      <button id="checkBtn" class="btn secondary">ตรวจข้อมูล</button>
-    </section>
-
-    <section id="previewCard" class="card hidden">
-      <div class="section-title">สรุปก่อนบันทึก</div>
-      <div class="summary">
-        <div class="box"><strong id="parsedCount">0</strong><span class="muted">อ่านได้</span></div>
-        <div class="box"><strong id="newCount">0</strong><span class="muted">เพิ่มใหม่</span></div>
-        <div class="box"><strong id="duplicateCount">0</strong><span class="muted">ซ้ำ</span></div>
-        <div class="box"><strong id="unknownCount">0</strong><span class="muted">ไม่รู้จัก</span></div>
-      </div>
-      <div id="conflictStatus" class="status"></div>
-      <div style="height:10px"></div>
-      <button id="saveResultsBtn" class="btn primary">บันทึกผล + ตรวจ Forward</button>
-      <div id="saveResultStatus" class="status"></div>
-    </section>
-
-    <section id="itemsCard" class="card hidden">
-      <div class="section-title">รายการที่ตรวจพบ</div>
-      <div id="previewList" class="list"></div>
-    </section>
-
-    <section class="card">
-      <div class="section-title">หลักการอ่านข้อมูล</div>
-      <div class="small-line">• เก็บผลจริงไม่เกิน 20 งวดต่อหนึ่งตลาด</div>
-      <div class="small-line">• Engine ใช้ 10 งวดล่าสุดของตลาดนั้น</div>
-      <div class="small-line">• วันที่ใช้บันทึกและกันซ้ำ แต่การคำนวณนับตาม “งวดจริง”</div>
-      <div class="small-line">• ตลาดเดียวกัน + วันเดียวกัน + ผลเดิม = ข้าม</div>
-      <div class="small-line">• ตลาดเดียวกัน + วันเดียวกัน + ผลต่าง = Conflict ไม่เขียนทับ</div>
-    </section>
+    <header class="brand"><h1>VELTRIX</h1><p>Results / Forward Tracker</p></header>
+    <section class="card"><div class="label">วางผลทั้งก้อน</div><textarea id="rawText" class="textarea" placeholder="สรุปผลหวยประจำวันที่ 08 สิงหาคม 2569\n787-21 🇺🇸 ดาวโจนส์ VIP\n161-08 🇺🇸 ดาวโจนส์สตาร์\n794-56 🇱🇦 ลาวกาชาด"></textarea><div class="status">ระบบอ่านเฉพาะตลาดที่มีใน VELTRIX • ตลาดที่ไม่ออกวันนี้ไม่ถือว่าขาด</div><div style="height:9px"></div><button id="checkBtn" class="btn">ตรวจข้อมูล</button></section>
+    <section id="previewCard" class="card hidden"><div class="section-title">สรุปก่อนบันทึก</div><div class="summary"><div class="box"><strong id="parsedCount">0</strong><span class="muted">อ่านได้</span></div><div class="box"><strong id="newCount">0</strong><span class="muted">เพิ่มใหม่</span></div><div class="box"><strong id="duplicateCount">0</strong><span class="muted">ซ้ำ</span></div><div class="box"><strong id="unknownCount">0</strong><span class="muted">ไม่รู้จัก</span></div></div><div id="conflictStatus" class="status"></div><div style="height:10px"></div><button id="saveResultsBtn" class="btn primary">บันทึกผล + ตรวจ Forward</button><div id="saveResultStatus" class="status"></div></section>
+    <section id="itemsCard" class="card hidden"><div class="section-title">รายการที่ตรวจพบ</div><div id="previewList" class="list"></div></section>
+    <section class="card"><div class="section-title">หลักการอ่านข้อมูล</div><div class="small-line">• เก็บผลจริงไม่เกิน 20 งวดต่อหนึ่งตลาด</div><div class="small-line">• Engine ใช้ 10 งวดล่าสุดของตลาดนั้น</div><div class="small-line">• วันที่ใช้บันทึกและกันซ้ำ แต่การคำนวณนับตาม “งวดจริง”</div><div class="small-line">• ตลาดเดียวกัน + วันเดียวกัน + ผลเดิม = ข้าม</div><div class="small-line">• ตลาดเดียวกัน + วันเดียวกัน + ผลต่าง = Conflict ไม่เขียนทับ</div></section>
   </main>
-
-  <nav class="footer-nav"><div class="inner">
-    <a class="nav-btn" href="/">ENGINE</a>
-    <a class="nav-btn active" href="/results.html">RESULTS</a>
-  </div></nav>
-
-  <script type="module" src="/results.js?v=20260809-2"></script>
+  <nav class="footer-nav"><div class="inner"><a class="nav-btn" href="/">ENGINE</a><a class="nav-btn active" href="/results.html">RESULTS</a></div></nav>
+  <script type="module" src="/results.js?v=20260809-3"></script>
 </body>
 </html>
