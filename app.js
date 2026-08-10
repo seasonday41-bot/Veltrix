@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 let activeMode='A',currentMarket=null,history=[],outputs=null,allMarkets=[];
 const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v14');
-const rudPromise=import('/lib/rud-ai.js?v=20260810-rud-ai-v15');
+const rudPromise=import('/lib/rud-ai.js?v=20260810-rud-linked-v15-2');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -75,7 +75,7 @@ function render(){
   if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
   if($('pair2b')){$('pair2b').textContent='';$('pair2b').style.display='none';}
   if($('pair3'))$('pair3').textContent=(o.pair3Top||[]).slice(0,3).join(' • ');
-  if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • RUD AI แยก • Smart Reserve • Drift ${o.driftScore}% • Memory ${o.errorMemorySamples||0} • ย้อนหลัง ${history.length} งวด`;
+  if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • RUD AI → WIN6 • Reserve Challenger • Drift ${o.driftScore}% • Memory ${o.errorMemorySamples||0} • ย้อนหลัง ${history.length} งวด`;
 
   if($('copyBtn'))$('copyBtn').disabled=false;
   if($('saveBtn'))$('saveBtn').disabled=false;
