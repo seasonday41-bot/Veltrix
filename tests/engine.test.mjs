@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {calculateFormulaSet,calculateVeltrix} from '../lib/veltrix-engine.js';
+import {enhanceVeltrixWithRud} from '../lib/rud-ai.js';
 import {settlePrediction,buildErrorMemory} from '../lib/error-memory.js';
 
 const rows=[
@@ -48,6 +49,22 @@ test('all downstream outputs stay inside the same WIN6',()=>{
   assert.equal(out.baseWeight+out.recentWeight,100);
   assert.equal(out.errorMemoryApplied,false);
   assert.equal(out.errorMemorySamples,0);
+});
+
+test('linked RUD AI keeps primary and secondary inside final WIN6 while reserve stays outside',()=>{
+  const core=calculateVeltrix(rows,{targetDate:'2026-08-11'});
+  const out=enhanceVeltrixWithRud(rows,core).A;
+  const win=new Set(out.win6);
+
+  assert.equal(win.size,6);
+  assert.equal(out.relationshipLocked,true);
+  assert.ok(win.has(out.rudTop));
+  assert.ok(win.has(out.rudBottom));
+  assert.notEqual(out.rudTop,out.rudBottom);
+  assert.ok(!win.has(out.reserve7));
+  assert.equal(out.rudAI?.relationshipLocked,true);
+  for(const pair of out.pair2Shared)for(const d of pair)assert.ok(win.has(d));
+  for(const triple of out.pair3Top)for(const d of triple)assert.ok(win.has(d));
 });
 
 test('settlement records missing digits, reserve rescue and downstream outcomes',()=>{
