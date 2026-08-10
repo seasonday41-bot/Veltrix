@@ -68,6 +68,26 @@ test('linked RUD AI keeps primary and secondary inside final WIN6 while reserve 
   for(const triple of out.pair3Top)for(const d of triple)assert.ok(win.has(d));
 });
 
+test('v16 specialists change only downstream selection and stay locked to final WIN6',()=>{
+  const core=calculateVeltrix(rows,{targetDate:'2026-08-11'});
+  const out=enhanceVeltrixWithRud(rows,core).A;
+  const win=new Set(out.win6);
+
+  assert.equal(out.win6,core.A.win6);
+  assert.equal(out.specialistVersion,'OUTPUT_SPECIALISTS_V16');
+  assert.deepEqual(out.specialists,{
+    pair2:'PAIR2_POSITION_SPECIALIST_V1',
+    pair3:'PAIR3_FORMULA_PRIORITY_SPECIALIST_V1',
+    double:'DOUBLE_BALANCED_SPECIALIST_V1'
+  });
+  assert.deepEqual(out.pair2Shared,['89','86','19','16','69']);
+  assert.deepEqual(out.pair3Top,['931','953','916']);
+  assert.deepEqual(out.doubleWatch,['9','3','6']);
+  for(const pair of out.pair2Shared)for(const d of pair)assert.ok(win.has(d));
+  for(const triple of out.pair3Top)for(const d of triple)assert.ok(win.has(d));
+  for(const d of out.doubleWatch)assert.ok(win.has(d));
+});
+
 test('World WIN fusion is assistive and keeps the linked lineage coherent',()=>{
   assert.equal(normalizeWorldWin('112233789'),'123789');
   const core=calculateVeltrix(rows,{targetDate:'2026-08-11'});
@@ -81,8 +101,10 @@ test('World WIN fusion is assistive and keeps the linked lineage coherent',()=>{
   assert.ok(win.has(out.rudTop));
   assert.ok(win.has(out.rudBottom));
   assert.ok(!win.has(out.reserve7));
+  assert.equal(out.specialistVersion,'OUTPUT_SPECIALISTS_V16');
   for(const pair of out.pair2Shared)for(const d of pair)assert.ok(win.has(d));
   for(const triple of out.pair3Top)for(const d of triple)assert.ok(win.has(d));
+  for(const d of out.doubleWatch)assert.ok(win.has(d));
 });
 
 test('settlement records missing digits, reserve rescue and downstream outcomes',()=>{
@@ -90,7 +112,8 @@ test('settlement records missing digits, reserve rescue and downstream outcomes'
     win6:'123456',reserve7:'7',rudTop:'1',rudBottom:'2',
     pair2Shared:['12','34','56','23','45'],pair3Top:['123','345','456'],
     doubleWatch:['1','3','5'],doubleChance:40,driftScore:31,driftLevel:'เริ่มเปลี่ยน',
-    baseWeight:60,recentWeight:40,formulaOutputs:{'สูตร 2':'1'},formulaReliability:{'สูตร 2':.7}
+    baseWeight:60,recentWeight:40,formulaOutputs:{'สูตร 2':'1'},formulaReliability:{'สูตร 2':.7},
+    specialistVersion:'OUTPUT_SPECIALISTS_V16',specialists:{pair2:'p2',pair3:'p3',double:'dbl'}
   };
   const settled=settlePrediction(prediction,{id:'actual1',draw_date:'2026-08-11',top3:'177',bottom2:'62'},{
     market_id:'m1',source_result_id:'source1',target_result_id:'actual1',source_date:'2026-08-10',target_date:'2026-08-11'
@@ -101,6 +124,7 @@ test('settlement records missing digits, reserve rescue and downstream outcomes'
   assert.deepEqual(settled.details.reserve_rescue_digits,['7']);
   assert.deepEqual(settled.details.double_actual_digits,['7']);
   assert.equal(settled.details.double_watch_hit,false);
+  assert.equal(settled.details.specialist_version,'OUTPUT_SPECIALISTS_V16');
   assert.equal(settled.rud_top_hit,true);
   assert.equal(settled.rud_bottom_hit,true);
 });
