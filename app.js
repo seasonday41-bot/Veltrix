@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 let activeMode='B',currentMarket=null,history=[],outputs=null,allMarkets=[];
-const enginePromise=import('/lib/veltrix-engine.js?v=20260810-dayyear-v8');
+const enginePromise=import('/lib/veltrix-engine.js?v=20260810-primary-first-v9');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
