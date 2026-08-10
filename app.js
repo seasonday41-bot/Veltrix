@@ -3,6 +3,7 @@ let activeMode='A',currentMarket=null,history=[],outputs=null,allMarkets=[],worl
 const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v14');
 const rudPromise=import('/lib/rud-ai.js?v=20260810-rud-linked-v15-2');
 const worldWinPromise=import('/lib/world-win.js?v=20260810-world-win-v1');
+const doublePatternPromise=import('/lib/double-pattern-ai.js?v=20260810-double-pattern-v1');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -83,8 +84,8 @@ function ensureAdaptiveAssist(){
   if(!row)return null;
   box=document.createElement('div');
   box.id='adaptiveAssist';
-  box.style.cssText='position:relative;margin:10px auto 2px;padding:9px 10px;width:min(100%,430px);display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:7px;border:1px solid rgba(117,135,235,.38);border-radius:13px;background:rgba(4,8,29,.58);box-shadow:inset 0 0 16px rgba(70,75,180,.08);';
-  box.innerHTML='<div style="min-width:0;text-align:left"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">DRIFT</div><div id="driftAssist" style="font-size:14px;font-weight:800;color:#e9f4ff;white-space:nowrap">-</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:8px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">BASE / 5 งวด</div><div id="mixAssist" style="font-size:14px;font-weight:800;color:#f4e9ff;white-space:nowrap">-</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:8px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">เบิ้ลเฝ้า</div><div id="doubleAssist" style="font-size:14px;font-weight:800;color:#ffd9ff;white-space:nowrap">-</div></div>';
+  box.style.cssText='position:relative;margin:10px auto 2px;padding:9px 10px;width:min(100%,430px);display:grid;grid-template-columns:1fr 1fr 1.45fr;gap:7px;border:1px solid rgba(117,135,235,.38);border-radius:13px;background:rgba(4,8,29,.58);box-shadow:inset 0 0 16px rgba(70,75,180,.08);';
+  box.innerHTML='<div style="min-width:0;text-align:left"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">DRIFT</div><div id="driftAssist" style="font-size:14px;font-weight:800;color:#e9f4ff;white-space:nowrap">-</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:8px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">BASE / 5 งวด</div><div id="mixAssist" style="font-size:14px;font-weight:800;color:#f4e9ff;white-space:nowrap">-</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:8px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">DOUBLE PATTERN</div><div id="doubleAssist" style="font-size:12px;line-height:1.35;font-weight:800;color:#ffd9ff;white-space:normal">-</div></div>';
   row.insertAdjacentElement('afterend',box);
   return box;
 }
@@ -92,30 +93,15 @@ function ensureAdaptiveAssist(){
 function polishRudCards(o=null){
   const cards=[...document.querySelectorAll('.rud-card .metric')];
   if(cards.length<2)return;
-
   const setup=(card,label,icon)=>{
     const iconEl=card.querySelector('.metric-icon');
     const labelEl=card.querySelector('span:not(.metric-icon)');
-    if(iconEl){
-      iconEl.textContent=icon;
-      iconEl.style.fontSize='24px';
-      iconEl.style.fontWeight='800';
-      iconEl.style.lineHeight='1';
-    }
-    if(labelEl){
-      labelEl.textContent=label;
-      labelEl.style.whiteSpace='nowrap';
-    }
+    if(iconEl){iconEl.textContent=icon;iconEl.style.fontSize='24px';iconEl.style.fontWeight='800';iconEl.style.lineHeight='1';}
+    if(labelEl){labelEl.textContent=label;labelEl.style.whiteSpace='nowrap';}
   };
-
   setup(cards[0],'รูดหลัก','↑');
   setup(cards[1],'รูดรอง','↓');
-
-  if($('sharedRud')){
-    $('sharedRud').textContent='';
-    $('sharedRud').classList.add('hidden');
-    $('sharedRud').style.display='none';
-  }
+  if($('sharedRud')){$('sharedRud').textContent='';$('sharedRud').classList.add('hidden');$('sharedRud').style.display='none';}
 }
 
 function render(){
@@ -127,18 +113,19 @@ function render(){
   ensureAdaptiveAssist();
   if($('driftAssist'))$('driftAssist').textContent=`${o.driftScore ?? 0}% ${o.driftLevel||''}`;
   if($('mixAssist'))$('mixAssist').textContent=`${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
-  if($('doubleAssist'))$('doubleAssist').textContent=`${o.doubleChance ?? 0}% • ${(o.doubleWatch||[]).join(' • ')}`;
+  if($('doubleAssist')){
+    const dp=o.doublePattern;
+    $('doubleAssist').textContent=dp?`บน ${dp.top.chance}% • ${dp.top.label} | ล่าง ${dp.bottom.chance}%`:'-';
+  }
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
   polishRudCards(o);
-
   const shared=o.pair2Shared||o.pair2Top||[];
   if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
   if($('pair2b')){$('pair2b').textContent='';$('pair2b').style.display='none';}
   if($('pair3'))$('pair3').textContent=(o.pair3Top||[]).slice(0,3).join(' • ');
   const world=o.worldWin?` • World ${o.worldWin}`:'';
   if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • RUD AI → WIN6 • Reserve Challenger${world} • Drift ${o.driftScore}% • Memory ${o.errorMemorySamples||0} • ย้อนหลัง ${history.length} งวด`;
-
   if($('copyBtn'))$('copyBtn').disabled=false;
   if($('saveBtn'))$('saveBtn').disabled=false;
 }
@@ -200,11 +187,13 @@ async function loadHistory(marketKey){
       if($('saveBtn'))$('saveBtn').disabled=true;
       return;
     }
-    const [{calculateVeltrix},{enhanceVeltrixWithRud},{applyWorldWinFusion}]=await Promise.all([enginePromise,rudPromise,worldWinPromise]);
+    const [{calculateVeltrix},{enhanceVeltrixWithRud},{applyWorldWinFusion},{calculateDoublePattern}]=await Promise.all([enginePromise,rudPromise,worldWinPromise,doublePatternPromise]);
     const core=calculateVeltrix(history,{targetDate:thaiTodayISO(),errorMemory:j.errorMemory||null});
     const activeWorldWin=cleanWorldWin($('worldWinInput')?.value||worldWinDigits);
     const fused=applyWorldWinFusion(core,activeWorldWin);
     outputs=enhanceVeltrixWithRud(history,fused);
+    const doublePattern=calculateDoublePattern(history);
+    for(const p of Object.values(outputs||{}))p.doublePattern=doublePattern;
     render();
   }catch(e){if($('engineStatus'))$('engineStatus').textContent=e.message;}
 }
@@ -213,8 +202,9 @@ function copyOutput(){
   const o=outputs?.[activeMode]||outputs?.A;if(!o)return;
   const pair2=(o.pair2Shared||o.pair2Top||[]).slice(0,5).join(' • ');
   const pair3=(o.pair3Top||[]).slice(0,3).join(' • ');
-  const doubleWatch=(o.doubleWatch||[]).join(' • ');
-  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}${o.reserve7?`(${o.reserve7})`:''}\nรูดหลัก ${o.rudTop}\nรูดรอง ${o.rudBottom}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\nเบิ้ล ${o.doubleChance ?? 0}%\nเฝ้าเบิ้ล ${doubleWatch}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
+  const dp=o.doublePattern;
+  const doubleText=dp?`เบิ้ลบน ${dp.top.chance}% • ${dp.top.label}\nเบิ้ลล่าง ${dp.bottom.chance}%`:'เบิ้ล -';
+  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}${o.reserve7?`(${o.reserve7})`:''}\nรูดหลัก ${o.rudTop}\nรูดรอง ${o.rudBottom}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\n${doubleText}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
   navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
 }
 
