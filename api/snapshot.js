@@ -1,6 +1,6 @@
 import {db,json,allow} from '../lib/db.js';
 
-const ENGINE_VERSION='adaptive_v15_linked';
+const ENGINE_VERSION='adaptive_v15';
 
 function rowFromPrediction(marketId,sourceId,p){
   const shared=Array.isArray(p.pair2Shared)?p.pair2Shared:(Array.isArray(p.pair2Top)?p.pair2Top:[]);
