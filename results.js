@@ -2,6 +2,41 @@ const $=id=>document.getElementById(id);
 let lastPreview=null;
 
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function cleanDailyWin(value=''){
+  const raw=String(value).replace(/\D/g,'').slice(0,10);
+  return [...raw].filter((d,i,a)=>a.indexOf(d)===i).join('');
+}
+
+async function loadDailyWin(){
+  if(!$('dailyWinInput'))return;
+  try{
+    const r=await fetch('/api/daily-win',{cache:'no-store'}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'อ่านวินประจำวันไม่ได้');
+    $('dailyWinInput').value=j.digits||'';
+    $('dailyWinStatus').textContent=j.digits?`ใช้ทั้ง 60 ตลาด • วันที่ ${j.date} • วิน ${j.digits}`:`วันที่ ${j.date} • ยังไม่ได้กำหนดวินประจำวัน`;
+    $('dailyWinStatus').className=`status ${j.digits?'good':'muted'}`;
+  }catch(e){
+    $('dailyWinStatus').textContent=e.message;
+    $('dailyWinStatus').className='status bad';
+  }
+}
+
+async function saveDailyWin(){
+  const digits=cleanDailyWin($('dailyWinInput')?.value||'');
+  $('dailyWinInput').value=digits;
+  $('saveDailyWinBtn').disabled=true;
+  $('dailyWinStatus').textContent='กำลังบันทึกวินประจำวัน Global...';
+  try{
+    const r=await fetch('/api/daily-win',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({digits})}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'บันทึกวินประจำวันไม่ได้');
+    $('dailyWinStatus').textContent=digits?`บันทึกแล้ว • ใช้ทั้ง 60 ตลาดตลอดวันที่ ${j.date} • วิน ${digits}`:`ล้างวินประจำวันแล้ว • วันที่ ${j.date} ไม่มีโบนัสวินประจำวัน`;
+    $('dailyWinStatus').className=`status ${digits?'good':'muted'}`;
+  }catch(e){
+    $('dailyWinStatus').textContent=e.message;
+    $('dailyWinStatus').className='status bad';
+  }finally{$('saveDailyWinBtn').disabled=false;}
+}
+
 function renderPreview(j){
   lastPreview=j;
   $('previewCard').classList.remove('hidden');
@@ -43,5 +78,8 @@ async function save(){
   finally{$('saveResultsBtn').disabled=false;}
 }
 
+if($('dailyWinInput'))$('dailyWinInput').addEventListener('input',e=>{e.target.value=cleanDailyWin(e.target.value);});
+if($('saveDailyWinBtn'))$('saveDailyWinBtn').onclick=saveDailyWin;
 $('checkBtn').onclick=inspect;
 $('saveResultsBtn').onclick=save;
+loadDailyWin();
