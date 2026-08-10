@@ -1,6 +1,6 @@
 import {db,json,allow} from '../lib/db.js';
 
-const ENGINE_VERSION='adaptive_v12';
+const ENGINE_VERSION='adaptive_v13';
 
 function rowFromPrediction(marketId,sourceId,p){
   const shared=Array.isArray(p.pair2Shared)?p.pair2Shared:(Array.isArray(p.pair2Top)?p.pair2Top:[]);
@@ -23,7 +23,7 @@ function rowFromPrediction(marketId,sourceId,p){
     pair3_top:(p.pair3Top||[]).slice(0,3),
     metadata:{
       pool_size:p.poolSize,
-      ui_version:'adaptive-v12',
+      ui_version:'adaptive-v13',
       target_date:p.targetDate||null,
       hybrid_version:p.hybridVersion||null,
       pair2_layout:'coherent_win6_5_pairs',
@@ -33,8 +33,8 @@ function rowFromPrediction(marketId,sourceId,p){
       drift_components:p.driftComponents||null,
       base_weight:p.baseWeight??null,
       recent_weight:p.recentWeight??null,
-      challenger_digit:p.challengerDigit||null,
-      challenger_replaced:!!p.challengerReplaced,
+      adaptive_window:p.adaptiveWindow??null,
+      adaptive_validation_scores:p.adaptiveValidationScores||null,
       double_chance:p.doubleChance??null,
       double_watch:p.doubleWatch||[],
       formula_outputs:p.formulaOutputs||{},
