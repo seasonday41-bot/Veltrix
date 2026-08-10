@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
-let activeMode='B',currentMarket=null,history=[],outputs=null,allMarkets=[];
-const enginePromise=import('/lib/veltrix-engine.js?v=20260810-global-daywin-v11');
+let activeMode='A',currentMarket=null,history=[],outputs=null,allMarkets=[];
+const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v12');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -8,41 +8,48 @@ function thaiTodayISO(){
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
-function ensureWinAssist(){
-  let box=$('winAssist');
+function hideLegacyMode(){
+  const card=document.querySelector('.mode-card');
+  if(card)card.style.display='none';
+  if($('modeNote'))$('modeNote').style.display='none';
+}
+
+function ensureAdaptiveAssist(){
+  let box=$('adaptiveAssist');
   if(box)return box;
   const row=document.querySelector('.hero .win-row');
   if(!row)return null;
   box=document.createElement('div');
-  box.id='winAssist';
-  box.style.cssText='position:relative;margin:10px auto 2px;padding:8px 11px;width:min(100%,390px);display:grid;grid-template-columns:1fr 1fr;gap:8px;border:1px solid rgba(117,135,235,.38);border-radius:13px;background:rgba(4,8,29,.55);box-shadow:inset 0 0 16px rgba(70,75,180,.08);';
-  box.innerHTML='<div style="min-width:0;text-align:left"><div style="font-size:11px;color:#969bb9;margin-bottom:2px">วินประจำวัน</div><div id="dayWinAssist" style="font-size:17px;font-weight:800;letter-spacing:1.2px;color:#e9f4ff;white-space:nowrap">-------</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:10px"><div style="font-size:11px;color:#969bb9;margin-bottom:2px">วินประจำปี</div><div id="yearWinAssist" style="font-size:17px;font-weight:800;letter-spacing:1.2px;color:#f4e9ff;white-space:nowrap">----</div></div>';
+  box.id='adaptiveAssist';
+  box.style.cssText='position:relative;margin:10px auto 2px;padding:9px 10px;width:min(100%,430px);display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:7px;border:1px solid rgba(117,135,235,.38);border-radius:13px;background:rgba(4,8,29,.58);box-shadow:inset 0 0 16px rgba(70,75,180,.08);';
+  box.innerHTML='<div style="min-width:0;text-align:left"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">DRIFT</div><div id="driftAssist" style="font-size:14px;font-weight:800;color:#e9f4ff;white-space:nowrap">-</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:8px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">BASE / 5 งวด</div><div id="mixAssist" style="font-size:14px;font-weight:800;color:#f4e9ff;white-space:nowrap">-</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:8px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">เบิ้ลเฝ้า</div><div id="doubleAssist" style="font-size:14px;font-weight:800;color:#ffd9ff;white-space:nowrap">-</div></div>';
   row.insertAdjacentElement('afterend',box);
   return box;
 }
 
 function render(){
   if(!outputs)return;
-  const o=outputs[activeMode];
-  $('modeA')?.classList.toggle('active',activeMode==='A');
-  $('modeB')?.classList.toggle('active',activeMode==='B');
-  if($('modeNote'))$('modeNote').textContent=activeMode==='A'?'งวด 1–3 → รูด 2 → WIN7 → เจาะ 2 รวม 10 ชุด':'งวด 3–5 → รูด 2 → WIN7 → เจาะ 2 รวม 10 ชุด';
+  const o=outputs[activeMode]||outputs.A||Object.values(outputs)[0];
+  hideLegacyMode();
   if($('win6'))$('win6').textContent=o.win6;
   if($('reserve7'))$('reserve7').textContent=o.reserve7;
-  ensureWinAssist();
-  if($('dayWinAssist'))$('dayWinAssist').textContent=o.dayWin||'ไม่ได้กำหนด';
-  if($('yearWinAssist'))$('yearWinAssist').textContent=o.yearWin||'----';
+  ensureAdaptiveAssist();
+  if($('driftAssist'))$('driftAssist').textContent=`${o.driftScore ?? 0}% ${o.driftLevel||''}`;
+  if($('mixAssist'))$('mixAssist').textContent=`${o.baseWeight ?? 80}/${o.recentWeight ?? 20}`;
+  if($('doubleAssist'))$('doubleAssist').textContent=`${o.doubleChance ?? 0}% • ${(o.doubleWatch||[]).join(' • ')}`;
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
 
   const shared=o.pair2Shared||o.pair2Top||[];
   if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
-  if($('pair2b'))$('pair2b').textContent=shared.slice(5,10).join(' • ');
-  if($('pair3'))$('pair3').textContent=o.pair3Top.join(' • ');
-  if($('engineStatus'))$('engineStatus').textContent=`MODE ${activeMode} • Pool ${o.poolSize} ตัว • คำนวณจาก ${history.length} งวดล่าสุด`;
-
+  if($('pair2b')){$('pair2b').textContent='';$('pair2b').style.display='none';}
+  if($('pair3'))$('pair3').textContent=(o.pair3Top||[]).slice(0,3).join(' • ');
+  if($('engineStatus')){
+    const challenger=o.challengerReplaced?` • เปลี่ยนตัวที่ 6 → ${o.challengerDigit}`:'';
+    $('engineStatus').textContent=`Adaptive 5 Draw • Drift ${o.driftScore}% • ${history.length} งวด${challenger}`;
+  }
   const metricLabels=document.querySelectorAll('.metric span');
-  if(metricLabels.length>=2){metricLabels[0].textContent='รูด';metricLabels[1].textContent='รูด';}
+  if(metricLabels.length>=2){metricLabels[0].textContent='รูดหลัก';metricLabels[1].textContent='รูดรอง';}
   if($('sharedRud')){
     $('sharedRud').classList.remove('hidden');
     $('sharedRud').textContent=`รูด ${o.rudTop} • ${o.rudBottom}`;
@@ -88,16 +95,18 @@ async function loadMarkets(){
 async function loadHistory(marketKey){
   outputs=null;history=[];
   if($('saveStatus'))$('saveStatus').textContent='';
-  if(!marketKey){if($('win6'))$('win6').textContent='------';if($('reserve7'))$('reserve7').textContent='-';if($('dayWinAssist'))$('dayWinAssist').textContent='ไม่ได้กำหนด';if($('yearWinAssist'))$('yearWinAssist').textContent='----';return;}
-  if($('engineStatus'))$('engineStatus').textContent='กำลังอ่านงวดล่าสุด...';
+  if(!marketKey){
+    if($('win6'))$('win6').textContent='------';
+    if($('reserve7'))$('reserve7').textContent='-';
+    if($('driftAssist'))$('driftAssist').textContent='-';
+    if($('mixAssist'))$('mixAssist').textContent='-';
+    if($('doubleAssist'))$('doubleAssist').textContent='-';
+    return;
+  }
+  if($('engineStatus'))$('engineStatus').textContent='กำลังอ่านย้อนหลัง...';
   try{
-    const [historyRes,dailyRes]=await Promise.all([
-      fetch(`/api/history?market_key=${encodeURIComponent(marketKey)}`),
-      fetch('/api/daily-win',{cache:'no-store'})
-    ]);
-    const [j,daily]=await Promise.all([historyRes.json(),dailyRes.json()]);
-    if(!historyRes.ok)throw new Error(j.error||'อ่านย้อนหลังไม่ได้');
-    if(!dailyRes.ok)throw new Error(daily.error||'อ่านวินประจำวันไม่ได้');
+    const r=await fetch(`/api/history?market_key=${encodeURIComponent(marketKey)}`,{cache:'no-store'}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'อ่านย้อนหลังไม่ได้');
     currentMarket=j.market;history=j.history||[];renderHistory();
     if(history.length<5){
       if($('engineStatus'))$('engineStatus').textContent=`มีข้อมูล ${history.length} งวด • ต้องมีอย่างน้อย 5 งวด`;
@@ -106,35 +115,35 @@ async function loadHistory(marketKey){
       return;
     }
     const {calculateVeltrix}=await enginePromise;
-    outputs=calculateVeltrix(history,{targetDate:thaiTodayISO(),dayWinOverride:daily.digits||''});
+    outputs=calculateVeltrix(history,{targetDate:thaiTodayISO()});
     render();
   }catch(e){if($('engineStatus'))$('engineStatus').textContent=e.message;}
 }
 
 function copyOutput(){
-  const o=outputs?.[activeMode];if(!o)return;
-  const rud=`รูด ${o.rudTop} • ${o.rudBottom}`;
-  const pair2=(o.pair2Shared||o.pair2Top||[]).join(' • ');
-  const text=`${currentMarket?.market_name||''}\nMODE ${activeMode}\n\nWIN\n${o.win6}(${o.reserve7})\n\n${rud}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${o.pair3Top.join(' • ')}`;
+  const o=outputs?.[activeMode]||outputs?.A;if(!o)return;
+  const pair2=(o.pair2Shared||o.pair2Top||[]).slice(0,5).join(' • ');
+  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}\nรูด ${o.rudTop} • ${o.rudBottom}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${(o.pair3Top||[]).slice(0,3).join(' • ')}\n\nเบิ้ล ${o.doubleChance}%\nเฝ้า ${(o.doubleWatch||[]).join(' • ')}\nDrift ${o.driftScore}% • ${o.baseWeight}/${o.recentWeight}`;
   navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
 }
 
 async function saveSnapshots(){
   if(!outputs||!currentMarket||!history[0])return;
   if($('saveBtn'))$('saveBtn').disabled=true;
-  if($('saveStatus'))$('saveStatus').textContent='กำลังล็อก MODE A / B...';
+  if($('saveStatus'))$('saveStatus').textContent='กำลังล็อก Snapshot...';
   try{
     const payload={market_id:currentMarket.id,source_result_id:history[0].id,predictions:Object.values(outputs)};
     const r=await fetch('/api/snapshot',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}),j=await r.json();
     if(!r.ok)throw new Error(j.error||'บันทึกไม่ได้');
-    if($('saveStatus'))$('saveStatus').textContent=j.already_locked?'Snapshot นี้ถูกล็อกไว้แล้ว':'ล็อก MODE A / B เรียบร้อย';
+    if($('saveStatus'))$('saveStatus').textContent=j.already_locked?'Snapshot นี้ถูกล็อกไว้แล้ว':'ล็อก Adaptive Snapshot เรียบร้อย';
   }catch(e){if($('saveStatus'))$('saveStatus').textContent=e.message;}
   finally{if($('saveBtn'))$('saveBtn').disabled=false;}
 }
 
 if($('modeA'))$('modeA').onclick=()=>{activeMode='A';render();};
-if($('modeB'))$('modeB').onclick=()=>{activeMode='B';render();};
+if($('modeB'))$('modeB').onclick=()=>{activeMode='A';render();};
 if($('marketSelect'))$('marketSelect').onchange=e=>loadHistory(e.target.value);
 if($('copyBtn'))$('copyBtn').onclick=copyOutput;
 if($('saveBtn'))$('saveBtn').onclick=saveSnapshots;
+hideLegacyMode();
 loadMarkets();
