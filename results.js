@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 let lastPreview=null,lastMemoryDryRun=null;
 
-function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));}
 function pct(v){return `${((Number(v)||0)*100).toFixed(1)}%`;}
 function cleanDailyWin(value=''){
   const raw=String(value).replace(/\D/g,'').slice(0,10);
@@ -63,9 +63,9 @@ async function loadDailyWin(){
   if(!$('dailyWinInput'))return;
   try{
     const r=await fetch('/api/daily-win',{cache:'no-store'}),j=await r.json();
-    if(!r.ok)throw new Error(j.error||'อ่านวินประจำวันไม่ได้');
+    if(!r.ok)throw new Error(j.error||'อ่านวินรอบโลกไม่ได้');
     $('dailyWinInput').value=j.digits||'';
-    $('dailyWinStatus').textContent=j.digits?`ใช้ทั้ง 60 ตลาด • วันที่ ${j.date} • วิน ${j.digits}`:`วันที่ ${j.date} • ยังไม่ได้กำหนดวินประจำวัน`;
+    $('dailyWinStatus').textContent=j.digits?`วินรอบโลก ${j.digits} • ใช้ทุกตลาดจนกว่าจะเปลี่ยน`:'ยังไม่ได้กำหนดวินรอบโลก';
     $('dailyWinStatus').className=`status ${j.digits?'good':'muted'}`;
   }catch(e){
     $('dailyWinStatus').textContent=e.message;
@@ -77,11 +77,11 @@ async function saveDailyWin(){
   const digits=cleanDailyWin($('dailyWinInput')?.value||'');
   $('dailyWinInput').value=digits;
   $('saveDailyWinBtn').disabled=true;
-  $('dailyWinStatus').textContent='กำลังบันทึกวินประจำวัน Global...';
+  $('dailyWinStatus').textContent='กำลังบันทึกวินรอบโลก...';
   try{
     const r=await fetch('/api/daily-win',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({digits})}),j=await r.json();
-    if(!r.ok)throw new Error(j.error||'บันทึกวินประจำวันไม่ได้');
-    $('dailyWinStatus').textContent=digits?`บันทึกแล้ว • ใช้ทั้ง 60 ตลาดตลอดวันที่ ${j.date} • วิน ${digits}`:`ล้างวินประจำวันแล้ว • วันที่ ${j.date} ไม่มีโบนัสวินประจำวัน`;
+    if(!r.ok)throw new Error(j.error||'บันทึกวินรอบโลกไม่ได้');
+    $('dailyWinStatus').textContent=digits?`บันทึกแล้ว • วินรอบโลก ${digits} • ใช้ทุกตลาดจนกว่าจะเปลี่ยน`:'ล้างวินรอบโลกแล้ว';
     $('dailyWinStatus').className=`status ${digits?'good':'muted'}`;
   }catch(e){
     $('dailyWinStatus').textContent=e.message;
