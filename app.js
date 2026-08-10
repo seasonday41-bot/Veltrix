@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 let activeMode='B',currentMarket=null,history=[],outputs=null,allMarkets=[];
-const enginePromise=import('/lib/veltrix-engine.js?v=20260810-balanced-v10');
+const enginePromise=import('/lib/veltrix-engine.js?v=20260810-global-daywin-v11');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -30,7 +30,7 @@ function render(){
   if($('win6'))$('win6').textContent=o.win6;
   if($('reserve7'))$('reserve7').textContent=o.reserve7;
   ensureWinAssist();
-  if($('dayWinAssist'))$('dayWinAssist').textContent=o.dayWin||'-------';
+  if($('dayWinAssist'))$('dayWinAssist').textContent=o.dayWin||'ไม่ได้กำหนด';
   if($('yearWinAssist'))$('yearWinAssist').textContent=o.yearWin||'----';
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
@@ -88,11 +88,16 @@ async function loadMarkets(){
 async function loadHistory(marketKey){
   outputs=null;history=[];
   if($('saveStatus'))$('saveStatus').textContent='';
-  if(!marketKey){if($('win6'))$('win6').textContent='------';if($('reserve7'))$('reserve7').textContent='-';if($('dayWinAssist'))$('dayWinAssist').textContent='-------';if($('yearWinAssist'))$('yearWinAssist').textContent='----';return;}
+  if(!marketKey){if($('win6'))$('win6').textContent='------';if($('reserve7'))$('reserve7').textContent='-';if($('dayWinAssist'))$('dayWinAssist').textContent='ไม่ได้กำหนด';if($('yearWinAssist'))$('yearWinAssist').textContent='----';return;}
   if($('engineStatus'))$('engineStatus').textContent='กำลังอ่านงวดล่าสุด...';
   try{
-    const r=await fetch(`/api/history?market_key=${encodeURIComponent(marketKey)}`),j=await r.json();
-    if(!r.ok)throw new Error(j.error||'อ่านย้อนหลังไม่ได้');
+    const [historyRes,dailyRes]=await Promise.all([
+      fetch(`/api/history?market_key=${encodeURIComponent(marketKey)}`),
+      fetch('/api/daily-win',{cache:'no-store'})
+    ]);
+    const [j,daily]=await Promise.all([historyRes.json(),dailyRes.json()]);
+    if(!historyRes.ok)throw new Error(j.error||'อ่านย้อนหลังไม่ได้');
+    if(!dailyRes.ok)throw new Error(daily.error||'อ่านวินประจำวันไม่ได้');
     currentMarket=j.market;history=j.history||[];renderHistory();
     if(history.length<5){
       if($('engineStatus'))$('engineStatus').textContent=`มีข้อมูล ${history.length} งวด • ต้องมีอย่างน้อย 5 งวด`;
@@ -101,7 +106,7 @@ async function loadHistory(marketKey){
       return;
     }
     const {calculateVeltrix}=await enginePromise;
-    outputs=calculateVeltrix(history,{targetDate:thaiTodayISO()});
+    outputs=calculateVeltrix(history,{targetDate:thaiTodayISO(),dayWinOverride:daily.digits||''});
     render();
   }catch(e){if($('engineStatus'))$('engineStatus').textContent=e.message;}
 }
