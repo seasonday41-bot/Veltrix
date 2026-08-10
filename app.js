@@ -108,8 +108,8 @@ function polishRudCards(o=null){
     }
   };
 
-  setup(cards[0],`รูดหลัก${o?.rudPrimarySide?` • ${o.rudPrimarySide}`:''}`,'↑');
-  setup(cards[1],`รูดรอง${o?.rudSecondarySide?` • ${o.rudSecondarySide}`:''}`,'↓');
+  setup(cards[0],'รูดหลัก','↑');
+  setup(cards[1],'รูดรอง','↓');
 
   if($('sharedRud')){
     $('sharedRud').textContent='';
@@ -214,7 +214,7 @@ function copyOutput(){
   const pair2=(o.pair2Shared||o.pair2Top||[]).slice(0,5).join(' • ');
   const pair3=(o.pair3Top||[]).slice(0,3).join(' • ');
   const doubleWatch=(o.doubleWatch||[]).join(' • ');
-  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}${o.reserve7?`(${o.reserve7})`:''}\nรูดหลัก ${o.rudTop}${o.rudPrimarySide?` • ${o.rudPrimarySide}`:''}\nรูดรอง ${o.rudBottom}${o.rudSecondarySide?` • ${o.rudSecondarySide}`:''}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\nเบิ้ล ${o.doubleChance ?? 0}%\nเฝ้าเบิ้ล ${doubleWatch}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
+  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}${o.reserve7?`(${o.reserve7})`:''}\nรูดหลัก ${o.rudTop}\nรูดรอง ${o.rudBottom}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\nเบิ้ล ${o.doubleChance ?? 0}%\nเฝ้าเบิ้ล ${doubleWatch}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
   navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
 }
 
