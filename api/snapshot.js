@@ -1,12 +1,14 @@
 import {db,json,allow} from '../lib/db.js';
 
+const ENGINE_VERSION='adaptive_v12';
+
 function rowFromPrediction(marketId,sourceId,p){
   const shared=Array.isArray(p.pair2Shared)?p.pair2Shared:(Array.isArray(p.pair2Top)?p.pair2Top:[]);
   return {
     market_id:marketId,
     source_result_id:sourceId,
     mode:p.mode,
-    engine_version:'v1',
+    engine_version:ENGINE_VERSION,
     pool_a:p.poolA||null,
     pool_b:p.poolB||null,
     rank_scores:p.rankScores||{},
@@ -47,10 +49,10 @@ export default async function handler(req,res){
   try{
     const {market_id,source_result_id,predictions}=req.body||{};
     if(!market_id||!source_result_id||!Array.isArray(predictions))return json(res,400,{error:'ข้อมูล Snapshot ไม่ครบ'});
-    const existing=await db(`veltrix_prediction_snapshots?select=id,mode&source_result_id=eq.${source_result_id}&engine_version=eq.v1`);
+    const existing=await db(`veltrix_prediction_snapshots?select=id,mode&source_result_id=eq.${source_result_id}&engine_version=eq.${ENGINE_VERSION}`);
     const locked=new Set((existing||[]).map(x=>x.mode));
     const rows=predictions.filter(p=>['A','B'].includes(p.mode)&&!locked.has(p.mode)).map(p=>rowFromPrediction(market_id,source_result_id,p));
     if(rows.length)await db('veltrix_prediction_snapshots',{method:'POST',body:rows,prefer:'return=minimal'});
-    return json(res,200,{ok:true,already_locked:rows.length===0,created:rows.length});
+    return json(res,200,{ok:true,engine_version:ENGINE_VERSION,already_locked:rows.length===0,created:rows.length});
   }catch(e){return json(res,500,{error:e.message});}
 }
