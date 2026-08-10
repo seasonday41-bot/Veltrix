@@ -2,16 +2,13 @@
 
 > ## SOURCE OF TRUTH / CHAT HANDOFF
 >
-> This README is the primary handoff document for the current VELTRIX production code on `main`.
-> A new ChatGPT room or developer should read this file before changing formulas, WIN6, World WIN, RUD, Reserve, Drill, Snapshot, Error Memory, Backfill, or Supabase behavior.
+> Read this README before changing Formula, WIN6, World WIN, RUD, Reserve, Pair2, Pair3, Double, Snapshot, Error Memory, Backfill or Supabase behavior.
 >
-> **Current production:** Adaptive v15 + Linked RUD AI + Smart Reserve + Persistent World WIN.
+> **Current release target:** Adaptive v16 + Linked RUD AI + Smart Reserve + Persistent World WIN + Output Specialists.
 
 ---
 
-## 1. Current system lineage
-
-VELTRIX is one connected deterministic pipeline. Subsystems may learn different evidence, but they must remain related to the same final ranking.
+## 1. One connected deterministic pipeline
 
 ```text
 Historical results
@@ -19,12 +16,13 @@ Historical results
   -> Recent market behavior
   -> Snapshot Error Memory
   -> Adaptive Ranking
-  -> Persistent World WIN Fusion (bonus only, not forced)
+  -> Persistent World WIN Fusion (bonus only)
   -> FINAL WIN6
-       -> Linked RUD AI selects Rud Primary / Secondary from FINAL WIN6
-       -> Pair2 / Pair3 use FINAL WIN6 and bounded RUD evidence
-       -> Double Watch uses FINAL WIN6
-       -> Smart Reserve stays outside FINAL WIN6
+       -> Linked RUD AI -> รูดหลัก / รูดรอง
+       -> Pair2 Specialist -> เจาะ 2 (5 sets)
+       -> Pair3 Specialist -> เจาะ 3 (3 sets)
+       -> Double Specialist -> เบิ้ล % + 3 watch digits
+       -> Smart Reserve -> one digit outside WIN6
   -> Snapshot Lock
   -> Actual result
   -> Settlement / Forward Audit
@@ -32,58 +30,42 @@ Historical results
   -> next prediction
 ```
 
-### Non-negotiable relationship rules
+### Non-negotiable relationship locks
 
-- FINAL WIN6 contains exactly 6 unique digits.
-- RUD AI may score all `0-9`, but actual **Rud Primary and Rud Secondary must be inside FINAL WIN6**.
-- Rud Primary and Rud Secondary must be different.
-- RUD is **not** `win6.slice(0,2)`; it has its own market-specific learned scoring.
-- Pair2 / Pair3 / Double Watch must use digits from the same FINAL WIN6.
-- RUD evidence may contribute bounded bonuses to Drill, but must not force every Drill set to contain a RUD digit.
+- FINAL WIN6 = exactly 6 unique digits.
+- RUD AI may score 0-9 internally, but actual รูดหลัก/รูดรอง must be inside FINAL WIN6 and different.
+- Pair2, Pair3 and Double Watch may use only digits inside the same FINAL WIN6.
 - Reserve is the only seventh support digit and must stay outside FINAL WIN6.
-- Reserve must remain measured separately from WIN6.
+- RUD/Pair/Double evidence may influence their own specialist decision but must never inject an outside digit into WIN6.
 - No random selection anywhere.
 
 ---
 
-## 2. Data / history rules
+## 2. History rules
 
-VELTRIX stores a maximum of **20 actual occurrences per market**.
-
-- Never read more than 20 historical rows per market.
-- Markets are occurrence-based; they do not need to draw every calendar day.
-- Inserting occurrence #21 removes the oldest occurrence for that market.
-- `top3` and `bottom2` are stored as text to preserve leading zeroes.
-- Canonical market + draw date controls duplicate/conflict behavior.
-- Same market/date/result = duplicate / skip.
-- Same market/date but different result = conflict / never overwrite automatically.
-- Market aliases are explicit; do not invent fuzzy aliases.
+- Store maximum **20 actual occurrences per market**.
+- Never read more than 20 rows per market.
+- Calculations are occurrence-based, not calendar-gap based.
+- `top3` and `bottom2` are text so leading zeroes survive.
+- Same canonical market + date + same result = duplicate/skip.
+- Same market + date but different result = conflict; never overwrite automatically.
+- Market aliases are explicit only.
 
 ### RUD learning window
 
-RUD learns from up to **10 completed transitions** and never reads beyond 20 rows.
-
-Current transition weights:
+RUD uses up to 10 completed transitions, weighted:
 
 ```text
 [1.15, 1.15, 1.35, 1.35, 1.30, 0.95, 0.82, 0.70, 0.60, 0.52]
 ```
 
-The strongest emphasis is intentionally around transitions **3-5**.
-
-The Adaptive WIN6 core uses recent-5 evidence plus short recent walk-forward validation. Drift may compare recent behavior with earlier behavior but still never exceeds the 20-row retention window.
+Transitions 3-5 intentionally carry the strongest weight.
 
 ---
 
 ## 3. Locked formula family
 
-Regression reference input:
-
-```text
-279-62
-```
-
-Expected outputs:
+Regression reference `279-62` must remain:
 
 ```text
 Formula 1     = 89
@@ -96,104 +78,42 @@ Formula 3-6%  = 846
 Formula 3-99% = 95
 ```
 
-### Formula 1
-
-```text
-x = (hundreds of top3 + tens of bottom2) mod 10
-output = x, (x+1) mod 10
-```
-
-### Formula 2
-
-```text
-(last2 of top3 + bottom2)
-then sum result digits mod 10
-```
-
-### Formula 2.1
-
-```text
-sum all 5 input digits mod 10
-output = x, (x+1) mod 10
-```
-
-### Formula 2.2
-
-For top3 = `A B C` and bottom2 = `D E`:
-
-```text
-(B+E) mod10
-(B+D) mod10
-(C+E) mod10
-```
-
-### Formula 3
-
-```text
-top3 x 9%
-top3 x 7%
-(last2 top3 + bottom2) x 6%
-(last2 top3 + bottom2) x 99%
-```
-
-Do not change formula definitions without updating regression tests and rerunning the comparable walk-forward benchmark.
+Do not change formula definitions without a new comparable walk-forward test and regression update.
 
 ---
 
-## 4. Adaptive WIN6 core
+## 4. Adaptive WIN6 core — unchanged in v16
 
 Candidate Base / Recent mixes:
 
 ```text
-100/0
-80/20
-60/40
-50/50
-40/60
-20/80
+100/0, 80/20, 60/40, 50/50, 40/60, 20/80
 ```
 
-The selected mix is learned per market using the market's own latest **3 completed walk-forward predictions**.
+Per-market mix selection uses the market's latest 3 completed walk-forward predictions.
 
-Validation scoring:
+Validation score:
 
 ```text
-5/5  -> 10
->=4  -> 4
->=3  -> 1
+5/5 -> 10
+>=4 -> 4
+>=3 -> 1
 else -> 0
 ```
 
-Recent evidence includes:
+Recent evidence includes formula reliability, recent digit presence and source-to-next persistence.
 
-- formula reliability
-- recent digit presence
-- source-to-next-result persistence
-
-Snapshot Error Memory can add only a small bounded correction:
+Error Memory correction remains bounded:
 
 ```text
 ERROR_MEMORY_WEIGHT = 0.08
 ```
 
-It must not overpower the core ranking.
+**v16 does not change WIN6 ranking logic.**
 
 ---
 
 ## 5. Persistent World WIN / วินรอบโลก
-
-Current production includes a persistent World WIN field.
-
-Behavior:
-
-- User can enter any unique digit set up to 10 digits.
-- The value persists until manually changed/cleared.
-- It is used across all markets.
-- It is applied **before Linked RUD selection**.
-- It adds a small Fusion bonus to matching digits.
-- It is **not forced into WIN6**.
-
-Current configuration:
 
 ```text
 WORLD_WIN_BONUS = 0.10
@@ -201,7 +121,12 @@ forced = false
 persistent = true
 ```
 
-Current order:
+- Persists until changed/cleared.
+- Used across markets.
+- Applied before Linked RUD selection.
+- Bonus only; never forced into WIN6.
+
+Order:
 
 ```text
 calculateVeltrix(core)
@@ -209,78 +134,32 @@ calculateVeltrix(core)
   -> enhanceVeltrixWithRud(...)
 ```
 
-World WIN evidence is stored in live Snapshot metadata so AUTO/manual snapshots remain aligned.
-
 ---
 
-## 6. Linked RUD AI
+## 6. Linked RUD AI — unchanged in v16
 
-RUD is an AI/scoring layer, not merely the first two WIN6 digits.
+RUD is not `win6.slice(0,2)`.
 
-RUD learns per market using source/position evidence, then selects its actual output from FINAL WIN6 so the system remains connected.
+Evidence includes Percent RUD `3-top x 56%` plus Formula 1, 2, 2.1, 2.2, 3-9%, 3-7%, 3-6%, 3-99%, learned by source/position per market using walk-forward only.
 
-### Percent RUD source
-
-Primary evidence includes **3-top x 56%**.
-
-Example:
+Current linked score is approximately:
 
 ```text
-354 x 56% = 198.24
-read left-to-right -> 1 9 8 2 4
-```
-
-If a percent result conceptually contains repeated digits, candidate interpretation keeps the first occurrence.
-
-Percent RUD is a **candidate/evidence source**, not the whole RUD AI.
-
-### RUD evidence sources
-
-- P56 Percent RUD
-- Formula 1
-- Formula 2
-- Formula 2.1
-- Formula 2.2
-- Formula 3-9%
-- Formula 3-7%
-- Formula 3-6%
-- Formula 3-99%
-
-For each source/position, RUD learns whether the digit appeared in the next result:
-
-- anywhere in top3 or bottom2
-- top3
-- bottom2
-
-Learning is per market and walk-forward only.
-
-### Current linked RUD score
-
-Approximately:
-
-```text
-60% learned all-source evidence
+60% all-source learned evidence
 25% P56 evidence
 15% central rank evidence
 ```
 
-RUD AI may score all digits `0-9`, but final selection is locked:
+Final selection is still constrained to FINAL WIN6:
 
 ```text
-Rud Primary   = strongest eligible RUD candidate inside FINAL WIN6
-Rud Secondary = next strongest different candidate inside FINAL WIN6
+Rud Primary   = strongest eligible RUD candidate inside WIN6
+Rud Secondary = next strongest different candidate inside WIN6
 ```
 
-Each selected RUD digit also receives a learned side label:
+Internal side learning (top/bottom) is still stored for settlement, but **customer UI and LINE copy show only `รูดหลัก` and `รูดรอง`; do not display บน/ล่าง.**
 
-```text
-รูดหลัก 3 • บน
-รูดรอง 7 • ล่าง
-```
-
-There are **not** separate Top-RUD and Bottom-RUD AIs. There is one RUD AI, two selected digits, and a side label for each digit.
-
-Current implementation version:
+Implementation:
 
 ```text
 RUD_AI_P56_MARKET_LINKED_WIN6_V2
@@ -289,247 +168,168 @@ relationshipLocked = true
 
 ---
 
-## 7. Drill 2 / Drill 3
+## 7. Smart Reserve — unchanged in v16
 
-RUD and Drill are different decisions but remain in the same FINAL WIN6 lineage.
+Reserve remains outside FINAL WIN6.
 
-Current output:
+Strategy:
 
-- Pair2 = 5 sets
-- Pair3 = 3 sets
-
-Rules:
-
-- every Pair2/Pair3 digit must be in FINAL WIN6
-- position probability contributes
-- central rank contributes
-- historical pair/triple evidence contributes
-- RUD may add a bounded bonus
-- RUD does not force all Drill sets
-
----
-
-## 8. Double Watch
-
-Double Watch uses FINAL WIN6 only.
-
-Current evidence includes:
-
-- recent historical double behavior
-- Formula 2 / 2.1 / 2.2 support
-- central ranking
-
-Output:
-
-- double probability %
-- 3 watch digits
-
-LINE copy must include the double probability and all 3 watch digits.
-
----
-
-## 9. Smart Reserve
-
-Reserve stays outside FINAL WIN6.
-
-Current strategy:
-
-1. Evaluate digits outside FINAL WIN6.
-2. Prefer strong learned P56 evidence.
-3. Use learned all-source RUD evidence and central ranking as tie-break/fallback.
-4. Retain original central rank #7 internally as `reserveRank7` for audit/comparison.
-
-Current strategy label:
+1. Evaluate digits outside WIN6.
+2. Prefer learned P56 evidence.
+3. Use all-source RUD evidence + central rank as tie-break/fallback.
+4. Keep original central rank #7 internally as `reserveRank7` for audit.
 
 ```text
 P56_RUD_RANK_LINKED_RESERVE
 ```
 
-### Final linked Reserve walk-forward check
-
-Comparable dataset: **60 markets x 20 draws, 900 walk-forward predictions**.
+Comparable 900 walk-forward predictions:
 
 ```text
-WIN6 full 5-position coverage
-76/900 = 8.44%
-
-WIN6 + plain central rank #7 full coverage
-134/900 = 14.89%
-additional rescues = 58
-
-WIN6 + Linked Percent-RUD Smart Reserve full coverage
-166/900 = 18.44%
-additional rescues = 90
-
-Smart Reserve appears somewhere in next 5 result positions
-~41.89%
+WIN6 5/5                         76/900 = 8.44%
+WIN6 + plain rank #7            134/900 = 14.89%
+WIN6 + Smart Reserve            166/900 = 18.44%
 ```
 
-Important: **18.44% is WIN6+Reserve seven-digit coverage, not WIN6 accuracy.**
-Do not report WIN6 itself as 18.44%.
+18.44% is WIN6+Reserve seven-digit coverage, not WIN6 accuracy.
 
 ---
 
-## 10. Linked RUD walk-forward reference
+## 8. Adaptive v16 Output Specialists
 
-On the same 900 targets:
+v16 changes only Pair2, Pair3 and Double Watch. WIN6, Smart Reserve and Linked RUD remain unchanged.
+
+### Pair2 Specialist
 
 ```text
-Rud Primary hit-any     39.89%
-Rud Secondary hit-any   41.67%
-At least one hits        66.00%
-Both hit                 15.56%
+PAIR2_POSITION_SPECIALIST_V1
 ```
 
-These figures are primarily evidence that the linked RUD selection is usable while preserving the relationship lock. They are not a guarantee of future results.
+- Builds candidates only from FINAL WIN6.
+- Scores exact two-digit task from top-last2 + bottom positional probability.
+- Keeps 5 deterministic non-reversed duplicate sets.
+- Does not use unrelated bonuses that reduced exact Pair2 performance.
 
-World WIN can change final rankings when a non-empty World WIN is active, so these benchmark figures should be treated as the linked-v15 reference baseline rather than a universal figure for every World WIN input.
+### Pair3 Specialist
+
+```text
+PAIR3_FORMULA_PRIORITY_SPECIALIST_V1
+```
+
+Formula candidate priority:
+
+```text
+สูตร 3-6%
+สูตร 3-9%
+สูตร 3-99%
+สูตร 2.2
+สูตร 3-7%
+```
+
+- Formula output must be exactly 3 digits and every digit must be inside FINAL WIN6.
+- Deduplicate by digit multiset.
+- If fewer than 3 candidates survive, fill deterministically with the previous linked triple scorer.
+
+### Double Specialist
+
+```text
+DOUBLE_BALANCED_SPECIALIST_V1
+```
+
+The existing double probability % is retained. Only the 3 watch digits are specialized.
+
+Watch score combines:
+
+```text
+25% recent double history
+30% Formula 2 / 2.1 / 2.2 support
+30% central ranking
+```
+
+Every watch digit must be inside FINAL WIN6.
+
+### v16 comparable benchmark
+
+Dataset: 60 markets x 20 draws, **900 walk-forward predictions**.
+Experiment split: 600 older predictions for selection + 300 latest predictions for validation.
+
+```text
+WIN6 5/5                         76/900 -> 76/900   unchanged
+WIN6 + Smart Reserve            166/900 -> 166/900 unchanged
+Linked RUD                      unchanged
+
+Pair2 exact top/bottom any       79/900 -> 91/900
+Pair2 exact top                  45/900 -> 53/900
+Pair2 exact bottom               37/900 -> 39/900
+Pair3 exact top3                  5/900 ->  9/900
+Double watch catch              97/307 -> 106/307
+```
+
+The selected specialists also improved on the latest 300 validation predictions, not only the older selection segment.
 
 ---
 
-## 11. Drift
+## 9. Snapshot / Settlement / Error Memory
 
-Drift is diagnostic evidence comparing recent behavior with previous behavior.
-
-Components include:
-
-- digit distribution shift
-- position behavior shift
-- formula reliability shift
-- pattern/double-rate shift
-- baseline coverage degradation
-
-Display scale:
+Current live Snapshot:
 
 ```text
-<25  = นิ่ง
-<45  = เริ่มเปลี่ยน
-<65  = เปลี่ยนชัด
->=65 = เปลี่ยนแรง
+adaptive_v16
 ```
 
-Drift does not directly force the Base/Recent mix. The mix is chosen by actual recent walk-forward performance.
-
----
-
-## 12. Snapshot / Settlement / Error Memory
-
-Current live Snapshot version:
+Compatible previous live Snapshot:
 
 ```text
 adaptive_v15
 ```
 
-Current historical Backfill version expected by Error Memory:
+Historical Backfill currently retained:
 
 ```text
 adaptive_v15_backfill
 ```
 
-Error Memory version:
+Error Memory:
 
 ```text
 snapshot_error_memory_v2
 ```
 
-### Live flow
+Memory priority for the same target:
 
 ```text
-before incoming actual result
-  -> AUTO LOCK adaptive_v15 prediction
-  -> insert actual result
-  -> settle Snapshot
-  -> Forward Audit / Error details
-  -> Error Memory for next prediction
+adaptive_v16 > adaptive_v15 > adaptive_v15_backfill
 ```
 
-### Live Snapshot metadata includes
-
-- relationship lock
-- WIN6 / Reserve
-- original central `reserveRank7`
-- Reserve strategy
-- linked RUD AI payload
-- Rud Primary / Secondary side labels
-- World WIN and World WIN fusion evidence
-- Pair2 / Pair3
-- double probability / watch
-- Drift
-- Base/Recent weights
-- Error Memory state
-- formula outputs/reliability
-
-### Settlement records
-
-- WIN6 5-position coverage
-- 5/5 / >=4 / >=3
-- missing actual digits
-- false-positive WIN6 digits
-- Reserve rescue digits
-- full-5 Reserve rescue
-- Rud Primary / Secondary any-hit
-- Rud top/bottom hit
-- Rud side hit
-- Pair2 / Pair3 hit
-- double event / watch hit
-- Drift and weights at prediction time
-- formula evidence
-
-### Error Memory behavior
-
-- per market
-- recency-decayed
-- bounded
-- learns missing digits / false-positive digits / successful digits / missed double digits
-- live Snapshot has priority over historical simulation for the same target when deduplicating
+Live settlement stores WIN6 coverage, missing/false-positive digits, Reserve rescue, RUD results, Pair2/Pair3 outcomes, double event/watch result, Drift, weights, formulas and specialist metadata.
 
 ---
 
-## 13. Historical Backfill — IMPORTANT KNOWN GAP
+## 10. Historical Backfill — KNOWN GAP
 
-The RESULTS page contains Dry Run / Error Memory backfill support, and Error Memory expects `adaptive_v15_backfill`.
+`api/backfill-learning.js` still contains legacy v14-era confirmation/metadata and does not yet reproduce the complete live order of World WIN -> Linked RUD -> v16 Output Specialists.
 
-However, **the current `api/backfill-learning.js` still contains legacy v14-era pieces**:
+Therefore **do not report the existing Backfill as a full v16 production reproduction.**
 
-- confirmation token is still `VELTRIX_BACKFILL_V14`
-- metadata label still says `adaptive-v14-backfill`
-- the simulation currently calls core `calculateVeltrix(...)` directly
-- it does **not yet run Persistent World WIN Fusion + Linked RUD enhancer in the same order as live adaptive_v15 predictions**
-
-Therefore:
-
-> **Do not treat the current Backfill result as a full production-v15 reproduction until this gap is fixed.**
-
-Required fix for the next development step:
+Future Backfill fix must be:
 
 ```text
 historical source rows
-  -> calculateVeltrix(core)
-  -> apply historical/current approved World WIN policy
-  -> enhanceVeltrixWithRud
-  -> snapshot as adaptive_v15_backfill
-  -> settle
-  -> Error Memory
+ -> calculateVeltrix
+ -> approved World WIN policy
+ -> enhanceVeltrixWithRud (including v16 specialists)
+ -> adaptive_v16_backfill snapshot
+ -> settlement
+ -> Error Memory
 ```
 
-Then update confirmation/UI metadata from V14 to V15 consistently and rerun regression tests.
-
-Backfill must remain:
-
-- true walk-forward
-- no future leakage
-- isolated from live snapshots
-- idempotent
-- POST-only
-- Dry Run before write
+Backfill must remain true walk-forward, no future leakage, isolated, idempotent, POST-only and Dry Run before write.
 
 ---
 
-## 14. Supabase
+## 11. Supabase
 
-VELTRIX uses Supabase project `six-digit-thai-lao`, with isolated `veltrix_` objects.
-
-Core objects:
+Uses project `six-digit-thai-lao` with isolated `veltrix_` objects:
 
 ```text
 veltrix_markets
@@ -543,147 +343,83 @@ veltrix_latest_20
 veltrix_latest_10
 ```
 
-Server-side environment variables:
+Server only:
 
 ```text
-SUPABASE_URL=...
-SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
 ```
 
-Never expose `SUPABASE_SERVICE_ROLE_KEY` in browser JavaScript or commit it to GitHub.
+Never expose the service-role key in browser code or GitHub.
 
 ---
 
-## 15. UI / iPhone behavior
+## 12. Customer UI / screenshot rules
 
-VELTRIX is mobile-first, especially iPhone.
+Mobile-first, especially iPhone.
 
-Current customer view includes:
+Visible customer output:
 
-- market search/select
+- market
 - persistent World WIN input
 - WIN6 + Reserve
-- Rud Primary + side
-- Rud Secondary + side
-- Drill 2 (5 sets)
-- Drill 3 (3 sets)
-- Double % + 3 watch digits
-- Drift / Base-Recent information
-- Copy button
+- รูดหลัก
+- รูดรอง
+- เจาะ 2 (5 sets)
+- เจาะ 3 (3 sets)
+- เบิ้ล % + 3 watch digits
+- copy / auto lock
 
-Legacy visible MODE A/B UI is removed/hidden. Internal compatibility A/B objects may still exist because older DB constraints/integrations use them, but the user should see **one Adaptive system**.
+Do **not** show RUD side labels (บน/ล่าง) to customers.
+Do **not** show internal engine-status text such as Adaptive/RUD AI/Reserve Challenger/World/Memory/history in screenshots. `engineStatus` is hidden on the customer page.
 
-LINE copy format includes:
+LINE copy keeps:
 
 ```text
 Market
 WIN6(Reserve)
-Rud Primary + side
-Rud Secondary + side
-Drill 2
-Drill 3
-Double %
-3 Double Watch digits
+รูดหลัก
+รูดรอง
+เจาะ 2
+เจาะ 3
+เบิ้ล %
+เฝ้าเบิ้ล 3 digits
 Drift / weight
 ```
 
 ---
 
-## 16. Regression locks
+## 13. Regression locks
 
-Before any future delivery, tests should verify at minimum:
+Before delivery/merge verify:
 
-- `279-62` formula reference stays exact
-- WIN6 has 6 unique digits
-- Rud Primary is inside FINAL WIN6
-- Rud Secondary is inside FINAL WIN6
-- Rud Primary != Rud Secondary
-- Reserve is outside FINAL WIN6
-- Pair2 digits are inside FINAL WIN6
-- Pair3 digits are inside FINAL WIN6
-- Double Watch digits are inside FINAL WIN6
-- World WIN is a bonus only and does not force membership
-- Settlement records missing digits / Reserve rescue / RUD outcomes correctly
-- Error Memory remains bounded
-- no future leakage
-- no random output
+- `279-62` formula reference exact.
+- WIN6 = 6 unique digits.
+- WIN6 result remains unchanged by v16 specialists.
+- RUD primary/secondary inside WIN6 and different.
+- Reserve outside WIN6.
+- Pair2 digits inside WIN6.
+- Pair3 digits inside WIN6.
+- Double Watch digits inside WIN6.
+- World WIN remains assistive/not forced.
+- Snapshot version and Error Memory compatibility correct.
+- no future leakage.
+- no random output.
 
----
-
-## 17. Performance references
-
-Adaptive v15 linked benchmark without claiming Reserve as WIN6:
+Reference v16 regression for the test history beginning `279-62`:
 
 ```text
-WIN6 5/5      8.44%   (76/900)
-WIN6+Rank7   14.89%  (134/900)
-WIN6+SmartR  18.44%  (166/900)
+Pair2  = 89 • 86 • 19 • 16 • 69
+Pair3  = 931 • 953 • 916
+Double = 9 • 3 • 6
 ```
 
-Earlier core baseline references:
-
-```text
-WIN6 >=4/5       32.33%
-WIN6 >=3/5       67.00%
-2-bottom full    34.33%
-```
-
-Fresh 17-result v13 reference before later v15/World-WIN changes:
-
-```text
-5/5      3/17
->=4/5   11/17
->=3/5   15/17
-Top3     10/17
-Bottom2   5/17
-```
-
-Always label which engine/version and whether Reserve/World WIN is included when reporting performance.
-
 ---
 
-## 18. Current production / Git status
+## New chat handoff
 
-Adaptive v15 PR #1 was merged into `main`.
-
-A later Persistent World WIN change is also on `main` and deployed to Vercel production.
-
-At the time this README was updated, the latest Vercel production deployment for `main` was **READY**.
-
-Do not assume future production status from this sentence forever; re-check GitHub/Vercel before claiming a new change is live.
-
----
-
-## 19. Do-not-break rules for the next chat/developer
-
-1. Read this README before editing VELTRIX.
-2. Treat `main` as current production source of truth unless the user names a newer branch/PR.
-3. Do not resurrect visible MODE A/B unless explicitly requested.
-4. Do not replace RUD AI with `win6.slice(0,2)`.
-5. Do not let actual RUD Primary/Secondary leave FINAL WIN6.
-6. Do not force an outside RUD digit into WIN6 after final ranking.
-7. Keep Reserve outside WIN6 and report Reserve metrics separately.
-8. Do not let Drill use digits outside FINAL WIN6.
-9. Keep World WIN a bounded bonus unless a new strategy is explicitly backtested and approved.
-10. Do not let Error Memory overpower core ranking.
-11. Do not use future data in backtests or historical simulations.
-12. Never read more than 20 historical occurrences per market.
-13. Main RUD learning uses up to 10 completed transitions, strongest around 3-5.
-14. No randomization.
-15. Keep live vs backfill Snapshot versions isolated.
-16. Do not delete existing historical Supabase data just because legacy UI is hidden.
-17. Fix the known Backfill v15 parity gap before treating historical Error Memory backfill as production-equivalent.
-18. Verify GitHub Actions and Vercel before claiming a change is ready/live.
-
----
-
-## 20. Quick instruction for a new ChatGPT room
-
-Send this message in the new room:
+In a new ChatGPT room, start with:
 
 ```text
-@GitHub เปิด repo seasonday41-bot/Veltrix แล้วอ่าน README.md บน main ก่อนทั้งหมด
-ให้ถือ README เป็น source of truth ของโปรเจกต์ แล้วเช็ก main/PR/CI/Vercel ล่าสุดก่อนแก้โค้ด
-ทำต่อจาก Adaptive v15 + Linked RUD + Smart Reserve + Persistent World WIN
-และห้ามทำลาย relationship lock ของ WIN6/RUD/Reserve/Drill
+@GitHub เปิด repo seasonday41-bot/Veltrix อ่าน README.md บน main ก่อนทั้งหมด แล้วทำต่อจาก Source of Truth ในนั้น
 ```
