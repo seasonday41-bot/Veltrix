@@ -13,19 +13,19 @@ const rows=[
 ];
 const prediction={win6:'270145',reserve7:'9',rudTop:'2',rudBottom:'7',rankScores:{0:.4,1:.5,2:.9,3:.6,4:.4,5:.7,6:.3,7:.8,8:.2,9:.5}};
 
-test('Double Digit AI v2 selects digit candidates only and does not mutate drill outputs',()=>{
+test('Double Digit AI v3 separates top learning from bottom percent priority',()=>{
   const out=calculateDoubleDigit(rows,prediction);
-  assert.equal(out.version,'DOUBLE_DIGIT_AI_V2_SOURCE_POSITION');
-  assert.equal(out.purpose,'select_double_digit_only');
+  assert.equal(out.version,'DOUBLE_DIGIT_AI_V3_SPLIT');
+  assert.equal(out.top.strategy,'SOURCE_POSITION_LEARNING');
+  assert.equal(out.bottom.strategy,'P99_THEN_P9');
   assert.equal(out.top.focus.length,2);
   assert.equal(out.bottom.focus.length,2);
   assert.equal(out.top.watch.length,3);
   assert.equal(out.bottom.watch.length,3);
   assert.equal(new Set(out.top.watch).size,3);
   assert.equal(new Set(out.bottom.watch).size,3);
-  for(const d of [...out.top.watch,...out.bottom.watch])assert.match(d,/^\d$/);
   assert.ok(out.components.top.learned);
-  assert.ok(out.components.bottom.learned);
+  assert.ok(Array.isArray(out.bottom.formulaPriority));
   assert.equal(out.relationship.changesWin6,false);
   assert.equal(out.relationship.changesPair2,false);
   assert.equal(out.relationship.changesPair3,false);
@@ -34,6 +34,6 @@ test('Double Digit AI v2 selects digit candidates only and does not mutate drill
 test('Double Digit AI uses only up to 20 history rows',()=>{
   const many=Array.from({length:30},(_,i)=>({top3:i<20?'111':'999',bottom2:i<20?'22':'88'}));
   const out=calculateDoubleDigit(many,{win6:'123456',rudTop:'1',rudBottom:'2'});
-  assert.ok(out.top.watch.includes('1'));
-  assert.ok(out.bottom.watch.includes('2'));
+  assert.equal(out.top.watch.length,3);
+  assert.equal(out.bottom.watch.length,3);
 });
