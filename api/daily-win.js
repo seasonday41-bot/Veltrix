@@ -21,27 +21,27 @@ export default async function handler(req,res){
     const value=current?.setting_value||{};
 
     if(req.method==='GET'){
-      const active=value.date===today;
+      const digits=normalizeDigits(value.digits||'');
       return json(res,200,{
         date:today,
-        digits:active?normalizeDigits(value.digits||''):'',
-        saved_date:value.date||null,
-        active,
+        digits,
+        active:Boolean(digits),
+        persistent:true,
         updated_at:current?.updated_at||null
       });
     }
 
     const digits=normalizeDigits(req.body?.digits||'');
-    const setting_value={date:today,digits};
+    const setting_value={digits,persistent:true};
     if(current){
       await db('veltrix_engine_settings?setting_key=eq.daily_win_global',{
-        method:'PATCH',prefer:'return=minimal',body:{setting_value,description:'Global daily WIN used by all VELTRIX markets for the Thailand date'}
+        method:'PATCH',prefer:'return=minimal',body:{setting_value,description:'Persistent global World WIN used by all VELTRIX markets until manually changed'}
       });
     }else{
       await db('veltrix_engine_settings',{
-        method:'POST',prefer:'return=minimal',body:[{setting_key:'daily_win_global',setting_value,description:'Global daily WIN used by all VELTRIX markets for the Thailand date'}]
+        method:'POST',prefer:'return=minimal',body:[{setting_key:'daily_win_global',setting_value,description:'Persistent global World WIN used by all VELTRIX markets until manually changed'}]
       });
     }
-    return json(res,200,{ok:true,date:today,digits,active:Boolean(digits)});
+    return json(res,200,{ok:true,date:today,digits,active:Boolean(digits),persistent:true});
   }catch(e){return json(res,500,{error:e.message,detail:e.data||null});}
 }
