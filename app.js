@@ -1,7 +1,8 @@
 const $=id=>document.getElementById(id);
-let activeMode='A',currentMarket=null,history=[],outputs=null,allMarkets=[];
+let activeMode='A',currentMarket=null,history=[],outputs=null,allMarkets=[],worldWinDigits='';
 const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v14');
 const rudPromise=import('/lib/rud-ai.js?v=20260810-rud-linked-v15-2');
+const worldWinPromise=import('/lib/world-win.js?v=20260810-world-win-v1');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -9,10 +10,70 @@ function thaiTodayISO(){
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+function cleanWorldWin(value=''){
+  const raw=String(value??'').replace(/\D/g,'').slice(0,10);
+  return [...raw].filter((d,i,a)=>a.indexOf(d)===i).join('');
+}
+
 function hideLegacyMode(){
   const card=document.querySelector('.mode-card');
   if(card)card.style.display='none';
   if($('modeNote'))$('modeNote').style.display='none';
+}
+
+function ensureWorldWinCard(){
+  let card=$('worldWinCard');
+  if(card)return card;
+  const marketCard=document.querySelector('.market-card');
+  if(!marketCard)return null;
+  card=document.createElement('div');
+  card.id='worldWinCard';
+  card.className='card';
+  card.style.cssText='padding:14px 16px;border-color:rgba(93,172,255,.65);';
+  card.innerHTML=`
+    <div class="section-head" style="margin-bottom:9px">
+      <div class="section-icon" style="font-size:19px">◎</div>
+      <div style="min-width:0;flex:1">
+        <div class="section-title">วินรอบโลก</div>
+        <div class="status">กรอกครั้งเดียว • ใช้ทุกตลาดจนกว่าจะเปลี่ยน</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 112px;gap:8px">
+      <input id="worldWinInput" class="search" inputmode="numeric" maxlength="10" placeholder="เช่น 1234567" style="padding-left:15px;margin:0" />
+      <button id="saveWorldWinBtn" class="btn primary" style="min-height:49px">บันทึก</button>
+    </div>
+    <div id="worldWinStatus" class="status" style="margin:7px 3px 0"></div>`;
+  marketCard.insertAdjacentElement('afterend',card);
+  const input=$('worldWinInput');
+  if(input)input.addEventListener('input',e=>{e.target.value=cleanWorldWin(e.target.value);});
+  if($('saveWorldWinBtn'))$('saveWorldWinBtn').onclick=saveWorldWin;
+  return card;
+}
+
+async function loadWorldWin(){
+  ensureWorldWinCard();
+  try{
+    const r=await fetch('/api/daily-win',{cache:'no-store'}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'อ่านวินรอบโลกไม่ได้');
+    worldWinDigits=cleanWorldWin(j.digits||'');
+    if($('worldWinInput'))$('worldWinInput').value=worldWinDigits;
+    if($('worldWinStatus'))$('worldWinStatus').textContent=worldWinDigits?`ใช้อยู่ ${worldWinDigits} • คงค่าไว้จนกว่าจะเปลี่ยน`:'ยังไม่ได้กำหนดวินรอบโลก';
+  }catch(e){if($('worldWinStatus'))$('worldWinStatus').textContent=e.message;}
+}
+
+async function saveWorldWin(){
+  const digits=cleanWorldWin($('worldWinInput')?.value||'');
+  if($('worldWinInput'))$('worldWinInput').value=digits;
+  if($('saveWorldWinBtn'))$('saveWorldWinBtn').disabled=true;
+  if($('worldWinStatus'))$('worldWinStatus').textContent='กำลังบันทึก...';
+  try{
+    const r=await fetch('/api/daily-win',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({digits})}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||'บันทึกวินรอบโลกไม่ได้');
+    worldWinDigits=cleanWorldWin(j.digits||'');
+    if($('worldWinStatus'))$('worldWinStatus').textContent=worldWinDigits?`บันทึกแล้ว ${worldWinDigits} • ใช้ทุกตลาดจนกว่าจะเปลี่ยน`:'ล้างวินรอบโลกแล้ว';
+    if(currentMarket?.market_key)await loadHistory(currentMarket.market_key);
+  }catch(e){if($('worldWinStatus'))$('worldWinStatus').textContent=e.message;}
+  finally{if($('saveWorldWinBtn'))$('saveWorldWinBtn').disabled=false;}
 }
 
 function ensureAdaptiveAssist(){
@@ -75,7 +136,8 @@ function render(){
   if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
   if($('pair2b')){$('pair2b').textContent='';$('pair2b').style.display='none';}
   if($('pair3'))$('pair3').textContent=(o.pair3Top||[]).slice(0,3).join(' • ');
-  if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • RUD AI → WIN6 • Reserve Challenger • Drift ${o.driftScore}% • Memory ${o.errorMemorySamples||0} • ย้อนหลัง ${history.length} งวด`;
+  const world=o.worldWin?` • World ${o.worldWin}`:'';
+  if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • RUD AI → WIN6 • Reserve Challenger${world} • Drift ${o.driftScore}% • Memory ${o.errorMemorySamples||0} • ย้อนหลัง ${history.length} งวด`;
 
   if($('copyBtn'))$('copyBtn').disabled=false;
   if($('saveBtn'))$('saveBtn').disabled=false;
@@ -138,9 +200,11 @@ async function loadHistory(marketKey){
       if($('saveBtn'))$('saveBtn').disabled=true;
       return;
     }
-    const [{calculateVeltrix},{enhanceVeltrixWithRud}]=await Promise.all([enginePromise,rudPromise]);
+    const [{calculateVeltrix},{enhanceVeltrixWithRud},{applyWorldWinFusion}]=await Promise.all([enginePromise,rudPromise,worldWinPromise]);
     const core=calculateVeltrix(history,{targetDate:thaiTodayISO(),errorMemory:j.errorMemory||null});
-    outputs=enhanceVeltrixWithRud(history,core);
+    const activeWorldWin=cleanWorldWin($('worldWinInput')?.value||worldWinDigits);
+    const fused=applyWorldWinFusion(core,activeWorldWin);
+    outputs=enhanceVeltrixWithRud(history,fused);
     render();
   }catch(e){if($('engineStatus'))$('engineStatus').textContent=e.message;}
 }
@@ -150,7 +214,7 @@ function copyOutput(){
   const pair2=(o.pair2Shared||o.pair2Top||[]).slice(0,5).join(' • ');
   const pair3=(o.pair3Top||[]).slice(0,3).join(' • ');
   const doubleWatch=(o.doubleWatch||[]).join(' • ');
-  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6} (${o.reserve7||''})\nรูดหลัก ${o.rudTop}${o.rudPrimarySide?` • ${o.rudPrimarySide}`:''}\nรูดรอง ${o.rudBottom}${o.rudSecondarySide?` • ${o.rudSecondarySide}`:''}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\nเบิ้ล ${o.doubleChance ?? 0}%\nเฝ้าเบิ้ล ${doubleWatch}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
+  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}${o.reserve7?`(${o.reserve7})`:''}\nรูดหลัก ${o.rudTop}${o.rudPrimarySide?` • ${o.rudPrimarySide}`:''}\nรูดรอง ${o.rudBottom}${o.rudSecondarySide?` • ${o.rudSecondarySide}`:''}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\nเบิ้ล ${o.doubleChance ?? 0}%\nเฝ้าเบิ้ล ${doubleWatch}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
   navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
 }
 
@@ -174,4 +238,10 @@ if($('copyBtn'))$('copyBtn').onclick=copyOutput;
 if($('saveBtn'))$('saveBtn').onclick=saveSnapshots;
 hideLegacyMode();
 polishRudCards();
-loadMarkets();
+
+async function init(){
+  ensureWorldWinCard();
+  await loadWorldWin();
+  await loadMarkets();
+}
+init();
