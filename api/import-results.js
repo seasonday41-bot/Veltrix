@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import {db,json,allow} from './_db.js';
 import {ensureAutoSnapshots} from '../lib/auto-snapshot.js';
+import {settlePrediction,ERROR_MEMORY_VERSIONS} from '../lib/error-memory.js';
 
 const THAI_MONTHS={
   'มกราคม':1,'ม.ค.':1,'ม.ค':1,'กุมภาพันธ์':2,'ก.พ.':2,'ก.พ':2,'มีนาคม':3,'มี.ค.':3,'มี.ค':3,
@@ -56,7 +57,7 @@ function canonPair(s){return [...String(s)].sort().join('');}
 function canonTriple(s){return [...String(s)].sort().join('');}
 function arr(v){return Array.isArray(v)?v:[];}
 
-function audit(snapshot,actual){
+function legacyAudit(snapshot,actual){
   const w6=new Set([...snapshot.win6]); const w7=new Set([...snapshot.win6,snapshot.reserve7]);
   const top=[...actual.top3], top2=actual.top3.slice(-2), bottom=actual.bottom2;
   const c6=top.filter(d=>w6.has(d)).length, c7=top.filter(d=>w7.has(d)).length;
@@ -81,6 +82,41 @@ function audit(snapshot,actual){
   };
 }
 
+function predictionFromSnapshot(snapshot){
+  const m=snapshot.metadata||{};
+  return {
+    mode:snapshot.mode,
+    win6:snapshot.win6,
+    reserve7:snapshot.reserve7,
+    rudTop:snapshot.rud_top,
+    rudBottom:snapshot.rud_bottom,
+    pair2Shared:m.pair2_shared||snapshot.pair2_top||[],
+    pair2Top:snapshot.pair2_top||[],
+    pair3Top:snapshot.pair3_top||[],
+    driftScore:m.drift_score,
+    driftLevel:m.drift_level,
+    baseWeight:m.base_weight,
+    recentWeight:m.recent_weight,
+    doubleWatch:m.double_watch||[],
+    doubleChance:m.double_chance,
+    formulaOutputs:m.formula_outputs||{},
+    formulaReliability:m.formula_reliability||{}
+  };
+}
+
+function audit(snapshot,actual,input){
+  if(snapshot.engine_version!==ERROR_MEMORY_VERSIONS.live)return legacyAudit(snapshot,actual);
+  const settled=settlePrediction(predictionFromSnapshot(snapshot),actual,{
+    backfill:false,
+    market_id:actual.market_id,
+    source_result_id:snapshot.source_result_id,
+    target_result_id:actual.id,
+    source_date:snapshot.metadata?.source_date||null,
+    target_date:actual.draw_date
+  });
+  return {snapshot_id:snapshot.id,actual_result_id:actual.id,...settled};
+}
+
 export default async function handler(req,res){
   allow(res,'POST');
   if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
@@ -100,7 +136,6 @@ export default async function handler(req,res){
     for(const m of markets||[])nameMap.set(normName(m.market_name),m);
     for(const a of aliases||[]){const m=marketById.get(a.market_id);if(m)nameMap.set(normName(a.alias),m);}
 
-    // Add the approved second naming style only when its canonical market exists.
     for(const [alias,canonical] of Object.entries(INPUT_MARKET_ALIASES)){
       const market=nameMap.get(normName(canonical));
       if(market)nameMap.set(normName(alias),market);
@@ -121,7 +156,8 @@ export default async function handler(req,res){
       const old=currentMap.get(`${market.id}|${sourceDate}`);
       let status='NEW';
       if(old)status=(old.top3===top3&&old.bottom2===bottom2)?'DUPLICATE':'CONFLICT';
-      parsed.push({market_id:market.id,market_name:market.market_name,raw_market:rawMarket,top3,bottom2,draw_date:sourceDate,status,previous_result_id:latestByMarket.get(market.id)?.id||null});
+      const previous=latestByMarket.get(market.id)||null;
+      parsed.push({market_id:market.id,market_name:market.market_name,raw_market:rawMarket,top3,bottom2,draw_date:sourceDate,status,previous_result_id:previous?.id||null,previous_draw_date:previous?.draw_date||null});
     }
     if(!parsed.length)return json(res,400,{error:'ไม่พบบรรทัดรูปแบบ 000-00 ชื่อตลาด'});
 
@@ -132,7 +168,7 @@ export default async function handler(req,res){
       conflict_count:parsed.filter(x=>x.status==='CONFLICT').length,
       unknown_market_count:parsed.filter(x=>x.status==='UNKNOWN').length
     };
-    const base={source_date:sourceDate,...stats,items:parsed.map(({previous_result_id,...x})=>x)};
+    const base={source_date:sourceDate,...stats,items:parsed.map(({previous_result_id,previous_draw_date,...x})=>x)};
     if(dry)return json(res,200,base);
 
     const hash=crypto.createHash('sha256').update(raw).digest('hex');
@@ -149,9 +185,7 @@ export default async function handler(req,res){
 
     const newItems=parsed.filter(x=>x.status==='NEW');
 
-    // AUTO LOCK: create MODE A/B snapshots from the database state BEFORE the
-    // new actual result is inserted. The incoming actual digits are never used
-    // by the prediction engine. Existing manual snapshots are preserved.
+    // AUTO LOCK: prediction is created before the actual is inserted.
     let autoLock={created:0,markets:0,skipped:0};
     if(newItems.length)autoLock=await ensureAutoSnapshots(newItems);
 
@@ -160,7 +194,7 @@ export default async function handler(req,res){
       insertedRows=await db('veltrix_market_results',{method:'POST',prefer:'return=representation',body:newItems.map(x=>({market_id:x.market_id,draw_date:x.draw_date,top3:x.top3,bottom2:x.bottom2,source:'manual_import',import_batch_id:batchId}))});
     }
 
-    let settled=0;
+    let settled=0,adaptiveMemoryAudits=0;
     if(insertedRows?.length){
       const predIds=[...new Set(newItems.map(x=>x.previous_result_id).filter(Boolean))];
       let pending=[];
@@ -171,7 +205,11 @@ export default async function handler(req,res){
       const audits=[]; const settledSnapshotIds=[];
       for(const actual of insertedRows){
         const input=inputByKey.get(`${actual.market_id}|${actual.draw_date}`); if(!input?.previous_result_id)continue;
-        for(const s of pendingBySource.get(input.previous_result_id)||[]){ audits.push(audit(s,actual)); settledSnapshotIds.push(s.id); }
+        for(const s of pendingBySource.get(input.previous_result_id)||[]){
+          const row=audit(s,actual,input);
+          if(s.engine_version===ERROR_MEMORY_VERSIONS.live)adaptiveMemoryAudits++;
+          audits.push(row); settledSnapshotIds.push(s.id);
+        }
       }
       if(audits.length){
         await db('veltrix_forward_audit',{method:'POST',prefer:'return=minimal',body:audits});
@@ -186,7 +224,8 @@ export default async function handler(req,res){
       auto_locked_snapshot_count:autoLock.created,
       auto_locked_market_count:autoLock.markets,
       auto_lock_skipped:autoLock.skipped,
-      settled_count:settled
+      settled_count:settled,
+      adaptive_error_memory_audit_count:adaptiveMemoryAudits
     });
   }catch(e){return json(res,500,{error:e.message,detail:e.data||null});}
 }
