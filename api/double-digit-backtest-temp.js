@@ -11,25 +11,23 @@ function topDouble(v){const [a,b,c]=[...top3(v)];if(a===b&&b===c)return a;if(a==
 function bottomDouble(v){const [a,b]=[...bottom2(v)];return a===b?a:null;}
 function pct(a,b){return b?Math.round(a*10000/b)/100:0;}
 const CONFIGS={
-  balanced:[.38,.22,.20,.20],
-  historyHeavy:[.58,.14,.14,.14],
-  formulaHeavy:[.24,.42,.14,.20],
-  hotHeavy:[.24,.18,.42,.16],
-  linkedHeavy:[.24,.18,.14,.44],
-  historyLinked:[.46,.12,.10,.32],
-  formulaLinked:[.18,.36,.10,.36],
-  hotLinked:[.18,.14,.34,.34],
-  historyFormula:[.44,.34,.10,.12]
+  v2:[.58,.16,.10,.08,.08],
+  learnedOnly:[1,0,0,0,0],
+  learnedHeavy:[.72,.10,.08,.04,.06],
+  learnedLinked:[.60,.10,.06,.04,.20],
+  learnedFormula:[.58,.08,.20,.04,.10],
+  learnedHistory:[.62,.24,.06,.04,.04],
+  learnedRecent:[.60,.10,.06,.18,.06]
 };
 function rank(comp,w){
-  const [wh,wf,wo,wl]=w;
+  const [wl,wh,wf,wo,wk]=w;
   return [...DIGITS].sort((a,b)=>{
-    const sa=wh*comp.historical[a]+wf*comp.formula[a]+wo*comp.hot[a]+wl*comp.linked[a];
-    const sb=wh*comp.historical[b]+wf*comp.formula[b]+wo*comp.hot[b]+wl*comp.linked[b];
-    return sb-sa||Number(a)-Number(b);
+    const sa=wl*comp.learned[a]+wh*comp.historical[a]+wf*comp.formula[a]+wo*comp.hot[a]+wk*comp.linked[a];
+    const sb=wl*comp.learned[b]+wh*comp.historical[b]+wf*comp.formula[b]+wo*comp.hot[b]+wk*comp.linked[b];
+    return sb-sa||comp.learned[b]-comp.learned[a]||Number(a)-Number(b);
   });
 }
-function blank(){return Object.fromEntries(Object.keys(CONFIGS).map(k=>[k,{focus2:0,watch3:0,latestFocus2:0}]));}
+function blank(){return Object.fromEntries(Object.keys(CONFIGS).map(k=>[k,{focus2:0,watch3:0,latestFocus2:0,latestWatch3:0}]));}
 
 export default async function handler(req,res){
   allow(res,'GET');if(req.method!=='GET')return json(res,405,{error:'Method not allowed'});
@@ -46,11 +44,11 @@ export default async function handler(req,res){
         const p=outputs?.A||Object.values(outputs||{})[0];if(!p)continue;
         const dd=calculateDoubleDigit(hist,p);if(!dd)continue;targets++;
         const td=topDouble(target.top3),bd=bottomDouble(target.bottom2),latest=Number(target.rn)<=5;
-        if(td!=null){topEvents++;if(latest)latestTopEvents++;for(const [name,w] of Object.entries(CONFIGS)){const r=rank(dd.components.top,w);if(r.slice(0,2).includes(td))top[name].focus2++;if(r.slice(0,3).includes(td))top[name].watch3++;if(latest&&r.slice(0,2).includes(td))top[name].latestFocus2++;}}
-        if(bd!=null){bottomEvents++;if(latest)latestBottomEvents++;for(const [name,w] of Object.entries(CONFIGS)){const r=rank(dd.components.bottom,w);if(r.slice(0,2).includes(bd))bottom[name].focus2++;if(r.slice(0,3).includes(bd))bottom[name].watch3++;if(latest&&r.slice(0,2).includes(bd))bottom[name].latestFocus2++;}}
+        if(td!=null){topEvents++;if(latest)latestTopEvents++;for(const [name,w] of Object.entries(CONFIGS)){const r=rank(dd.components.top,w);if(r.slice(0,2).includes(td))top[name].focus2++;if(r.slice(0,3).includes(td))top[name].watch3++;if(latest&&r.slice(0,2).includes(td))top[name].latestFocus2++;if(latest&&r.slice(0,3).includes(td))top[name].latestWatch3++;}}
+        if(bd!=null){bottomEvents++;if(latest)latestBottomEvents++;for(const [name,w] of Object.entries(CONFIGS)){const r=rank(dd.components.bottom,w);if(r.slice(0,2).includes(bd))bottom[name].focus2++;if(r.slice(0,3).includes(bd))bottom[name].watch3++;if(latest&&r.slice(0,2).includes(bd))bottom[name].latestFocus2++;if(latest&&r.slice(0,3).includes(bd))bottom[name].latestWatch3++;}}
       }
     }
-    const shape=(obj,events,latestEvents)=>Object.fromEntries(Object.entries(obj).map(([k,v])=>[k,{focus2:pct(v.focus2,events),watch3:pct(v.watch3,events),latestFocus2:pct(v.latestFocus2,latestEvents),counts:v}]));
+    const shape=(obj,events,latestEvents)=>Object.fromEntries(Object.entries(obj).map(([k,v])=>[k,{focus2:pct(v.focus2,events),watch3:pct(v.watch3,events),latestFocus2:pct(v.latestFocus2,latestEvents),latestWatch3:pct(v.latestWatch3,latestEvents),counts:v}]));
     return json(res,200,{ok:true,read_only:true,markets:by.size,targets,topEvents,bottomEvents,latestTopEvents,latestBottomEvents,randomBaseline:{focus2:20,watch3:30},top:shape(top,topEvents,latestTopEvents),bottom:shape(bottom,bottomEvents,latestBottomEvents)});
   }catch(e){return json(res,500,{error:e.message});}
 }
