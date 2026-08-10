@@ -4,6 +4,7 @@ const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v14');
 const rudPromise=import('/lib/rud-ai.js?v=20260810-rud-linked-v15-2');
 const worldWinPromise=import('/lib/world-win.js?v=20260810-world-win-v1');
 const doublePatternPromise=import('/lib/double-pattern-ai.js?v=20260810-double-pattern-v1');
+const siblingPositionPromise=import('/lib/sibling-position-ai.js?v=20260810-sibling-position-v1');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -87,6 +88,20 @@ function ensureAdaptiveAssist(){
   box.style.cssText='position:relative;margin:10px auto 2px;padding:9px 10px;width:min(100%,430px);display:grid;grid-template-columns:1fr 1fr 1.45fr;gap:7px;border:1px solid rgba(117,135,235,.38);border-radius:13px;background:rgba(4,8,29,.58);box-shadow:inset 0 0 16px rgba(70,75,180,.08);';
   box.innerHTML='<div style="min-width:0;text-align:left"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">DRIFT</div><div id="driftAssist" style="font-size:14px;font-weight:800;color:#e9f4ff;white-space:nowrap">-</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:8px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">BASE / 5 งวด</div><div id="mixAssist" style="font-size:14px;font-weight:800;color:#f4e9ff;white-space:nowrap">-</div></div><div style="min-width:0;text-align:left;border-left:1px solid rgba(117,135,235,.22);padding-left:8px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">DOUBLE PATTERN</div><div id="doubleAssist" style="font-size:12px;line-height:1.35;font-weight:800;color:#ffd9ff;white-space:normal">-</div></div>';
   row.insertAdjacentElement('afterend',box);
+  ensureSiblingAssist();
+  return box;
+}
+
+function ensureSiblingAssist(){
+  let box=$('siblingAssistBox');
+  if(box)return box;
+  const anchor=$('adaptiveAssist');
+  if(!anchor)return null;
+  box=document.createElement('div');
+  box.id='siblingAssistBox';
+  box.style.cssText='position:relative;margin:6px auto 2px;padding:8px 10px;width:min(100%,430px);display:grid;grid-template-columns:1fr 1fr;gap:7px;border:1px solid rgba(91,194,255,.34);border-radius:12px;background:rgba(4,10,28,.52);';
+  box.innerHTML='<div style="text-align:left"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">พี่น้องบน • 2 ตัวบน</div><div id="siblingTopAssist" style="font-size:13px;font-weight:800;color:#dff6ff">-</div></div><div style="text-align:left;border-left:1px solid rgba(117,135,235,.20);padding-left:9px"><div style="font-size:10px;color:#969bb9;margin-bottom:3px">พี่น้องล่าง • 2 ตัวล่าง</div><div id="siblingBottomAssist" style="font-size:13px;font-weight:800;color:#f0e7ff">-</div></div>';
+  anchor.insertAdjacentElement('afterend',box);
   return box;
 }
 
@@ -111,12 +126,16 @@ function render(){
   if($('win6'))$('win6').textContent=o.win6;
   if($('reserve7'))$('reserve7').textContent=o.reserve7;
   ensureAdaptiveAssist();
+  ensureSiblingAssist();
   if($('driftAssist'))$('driftAssist').textContent=`${o.driftScore ?? 0}% ${o.driftLevel||''}`;
   if($('mixAssist'))$('mixAssist').textContent=`${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
   if($('doubleAssist')){
     const dp=o.doublePattern;
     $('doubleAssist').textContent=dp?`บน ${dp.top.chance}% • ${dp.top.label} | ล่าง ${dp.bottom.chance}%`:'-';
   }
+  const sp=o.siblingPosition;
+  if($('siblingTopAssist'))$('siblingTopAssist').textContent=sp?`${sp.top.chance}%`:'-';
+  if($('siblingBottomAssist'))$('siblingBottomAssist').textContent=sp?`${sp.bottom.chance}%`:'-';
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
   polishRudCards(o);
@@ -173,6 +192,8 @@ async function loadHistory(marketKey){
     if($('driftAssist'))$('driftAssist').textContent='-';
     if($('mixAssist'))$('mixAssist').textContent='-';
     if($('doubleAssist'))$('doubleAssist').textContent='-';
+    if($('siblingTopAssist'))$('siblingTopAssist').textContent='-';
+    if($('siblingBottomAssist'))$('siblingBottomAssist').textContent='-';
     polishRudCards();
     return;
   }
@@ -187,13 +208,14 @@ async function loadHistory(marketKey){
       if($('saveBtn'))$('saveBtn').disabled=true;
       return;
     }
-    const [{calculateVeltrix},{enhanceVeltrixWithRud},{applyWorldWinFusion},{calculateDoublePattern}]=await Promise.all([enginePromise,rudPromise,worldWinPromise,doublePatternPromise]);
+    const [{calculateVeltrix},{enhanceVeltrixWithRud},{applyWorldWinFusion},{calculateDoublePattern},{calculateSiblingPosition}]=await Promise.all([enginePromise,rudPromise,worldWinPromise,doublePatternPromise,siblingPositionPromise]);
     const core=calculateVeltrix(history,{targetDate:thaiTodayISO(),errorMemory:j.errorMemory||null});
     const activeWorldWin=cleanWorldWin($('worldWinInput')?.value||worldWinDigits);
     const fused=applyWorldWinFusion(core,activeWorldWin);
     outputs=enhanceVeltrixWithRud(history,fused);
     const doublePattern=calculateDoublePattern(history);
-    for(const p of Object.values(outputs||{}))p.doublePattern=doublePattern;
+    const siblingPosition=calculateSiblingPosition(history);
+    for(const p of Object.values(outputs||{})){p.doublePattern=doublePattern;p.siblingPosition=siblingPosition;}
     render();
   }catch(e){if($('engineStatus'))$('engineStatus').textContent=e.message;}
 }
@@ -203,8 +225,10 @@ function copyOutput(){
   const pair2=(o.pair2Shared||o.pair2Top||[]).slice(0,5).join(' • ');
   const pair3=(o.pair3Top||[]).slice(0,3).join(' • ');
   const dp=o.doublePattern;
+  const sp=o.siblingPosition;
   const doubleText=dp?`เบิ้ลบน ${dp.top.chance}% • ${dp.top.label}\nเบิ้ลล่าง ${dp.bottom.chance}%`:'เบิ้ล -';
-  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}${o.reserve7?`(${o.reserve7})`:''}\nรูดหลัก ${o.rudTop}\nรูดรอง ${o.rudBottom}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\n${doubleText}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
+  const siblingText=sp?`พี่น้องบน ${sp.top.chance}%\nพี่น้องล่าง ${sp.bottom.chance}%`:'พี่น้อง -';
+  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}${o.reserve7?`(${o.reserve7})`:''}\nรูดหลัก ${o.rudTop}\nรูดรอง ${o.rudBottom}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\n${doubleText}\n${siblingText}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
   navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
 }
 
