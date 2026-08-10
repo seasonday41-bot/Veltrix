@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 let activeMode='A',currentMarket=null,history=[],outputs=null,allMarkets=[];
-const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v12');
+const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v13');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -35,7 +35,7 @@ function render(){
   if($('reserve7'))$('reserve7').textContent=o.reserve7;
   ensureAdaptiveAssist();
   if($('driftAssist'))$('driftAssist').textContent=`${o.driftScore ?? 0}% ${o.driftLevel||''}`;
-  if($('mixAssist'))$('mixAssist').textContent=`${o.baseWeight ?? 80}/${o.recentWeight ?? 20}`;
+  if($('mixAssist'))$('mixAssist').textContent=`${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
   if($('doubleAssist'))$('doubleAssist').textContent=`${o.doubleChance ?? 0}% • ${(o.doubleWatch||[]).join(' • ')}`;
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
@@ -44,10 +44,8 @@ function render(){
   if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
   if($('pair2b')){$('pair2b').textContent='';$('pair2b').style.display='none';}
   if($('pair3'))$('pair3').textContent=(o.pair3Top||[]).slice(0,3).join(' • ');
-  if($('engineStatus')){
-    const challenger=o.challengerReplaced?` • เปลี่ยนตัวที่ 6 → ${o.challengerDigit}`:'';
-    $('engineStatus').textContent=`Adaptive 5 Draw • Drift ${o.driftScore}% • ${history.length} งวด${challenger}`;
-  }
+  if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • เลือกน้ำหนักจาก ${o.adaptiveWindow||3} การทำนายล่าสุด • Drift ${o.driftScore}% • ย้อนหลัง ${history.length} งวด`;
+
   const metricLabels=document.querySelectorAll('.metric span');
   if(metricLabels.length>=2){metricLabels[0].textContent='รูดหลัก';metricLabels[1].textContent='รูดรอง';}
   if($('sharedRud')){
