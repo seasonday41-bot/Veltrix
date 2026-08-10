@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 let activeMode='A',currentMarket=null,history=[],outputs=null,allMarkets=[];
-const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v13');
+const enginePromise=import('/lib/veltrix-engine.js?v=20260810-adaptive-v14');
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -74,7 +74,7 @@ function render(){
   if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
   if($('pair2b')){$('pair2b').textContent='';$('pair2b').style.display='none';}
   if($('pair3'))$('pair3').textContent=(o.pair3Top||[]).slice(0,3).join(' • ');
-  if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • เลือกน้ำหนักจาก ${o.adaptiveWindow||3} การทำนายล่าสุด • Drift ${o.driftScore}% • ย้อนหลัง ${history.length} งวด`;
+  if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • เลือกน้ำหนักจาก ${o.adaptiveWindow||3} การทำนายล่าสุด • Drift ${o.driftScore}% • Memory ${o.errorMemorySamples||0} • ย้อนหลัง ${history.length} งวด`;
 
   if($('copyBtn'))$('copyBtn').disabled=false;
   if($('saveBtn'))$('saveBtn').disabled=false;
@@ -138,7 +138,7 @@ async function loadHistory(marketKey){
       return;
     }
     const {calculateVeltrix}=await enginePromise;
-    outputs=calculateVeltrix(history,{targetDate:thaiTodayISO()});
+    outputs=calculateVeltrix(history,{targetDate:thaiTodayISO(),errorMemory:j.errorMemory||null});
     render();
   }catch(e){if($('engineStatus'))$('engineStatus').textContent=e.message;}
 }
