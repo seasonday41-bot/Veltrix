@@ -34,6 +34,8 @@ function rowFromPrediction(marketId,sourceId,p){
       rud_ai:p.rudAI||null,
       rud_primary_side:p.rudPrimarySide||null,
       rud_secondary_side:p.rudSecondarySide||null,
+      world_win:p.worldWin||'',
+      world_win_fusion:p.fusionBonus?.worldWin||null,
       drift_score:p.driftScore??null,
       drift_level:p.driftLevel||null,
       drift_components:p.driftComponents||null,
