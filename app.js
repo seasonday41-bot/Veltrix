@@ -27,6 +27,35 @@ function ensureAdaptiveAssist(){
   return box;
 }
 
+function polishRudCards(){
+  const cards=[...document.querySelectorAll('.rud-card .metric')];
+  if(cards.length<2)return;
+
+  const setup=(card,label,icon)=>{
+    const iconEl=card.querySelector('.metric-icon');
+    const labelEl=card.querySelector('span:not(.metric-icon)');
+    if(iconEl){
+      iconEl.textContent=icon;
+      iconEl.style.fontSize='24px';
+      iconEl.style.fontWeight='800';
+      iconEl.style.lineHeight='1';
+    }
+    if(labelEl){
+      labelEl.textContent=label;
+      labelEl.style.whiteSpace='nowrap';
+    }
+  };
+
+  setup(cards[0],'รูดหลัก','↑');
+  setup(cards[1],'รูดรอง','↓');
+
+  if($('sharedRud')){
+    $('sharedRud').textContent='';
+    $('sharedRud').classList.add('hidden');
+    $('sharedRud').style.display='none';
+  }
+}
+
 function render(){
   if(!outputs)return;
   const o=outputs[activeMode]||outputs.A||Object.values(outputs)[0];
@@ -39,6 +68,7 @@ function render(){
   if($('doubleAssist'))$('doubleAssist').textContent=`${o.doubleChance ?? 0}% • ${(o.doubleWatch||[]).join(' • ')}`;
   if($('rudTop'))$('rudTop').textContent=o.rudTop;
   if($('rudBottom'))$('rudBottom').textContent=o.rudBottom;
+  polishRudCards();
 
   const shared=o.pair2Shared||o.pair2Top||[];
   if($('pair2a'))$('pair2a').textContent=shared.slice(0,5).join(' • ');
@@ -46,12 +76,6 @@ function render(){
   if($('pair3'))$('pair3').textContent=(o.pair3Top||[]).slice(0,3).join(' • ');
   if($('engineStatus'))$('engineStatus').textContent=`Adaptive 5 Draw • เลือกน้ำหนักจาก ${o.adaptiveWindow||3} การทำนายล่าสุด • Drift ${o.driftScore}% • ย้อนหลัง ${history.length} งวด`;
 
-  const metricLabels=document.querySelectorAll('.metric span');
-  if(metricLabels.length>=2){metricLabels[0].textContent='รูดหลัก';metricLabels[1].textContent='รูดรอง';}
-  if($('sharedRud')){
-    $('sharedRud').classList.remove('hidden');
-    $('sharedRud').textContent=`รูด ${o.rudTop} • ${o.rudBottom}`;
-  }
   if($('copyBtn'))$('copyBtn').disabled=false;
   if($('saveBtn'))$('saveBtn').disabled=false;
 }
@@ -99,6 +123,7 @@ async function loadHistory(marketKey){
     if($('driftAssist'))$('driftAssist').textContent='-';
     if($('mixAssist'))$('mixAssist').textContent='-';
     if($('doubleAssist'))$('doubleAssist').textContent='-';
+    polishRudCards();
     return;
   }
   if($('engineStatus'))$('engineStatus').textContent='กำลังอ่านย้อนหลัง...';
@@ -121,7 +146,9 @@ async function loadHistory(marketKey){
 function copyOutput(){
   const o=outputs?.[activeMode]||outputs?.A;if(!o)return;
   const pair2=(o.pair2Shared||o.pair2Top||[]).slice(0,5).join(' • ');
-  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}\nรูด ${o.rudTop} • ${o.rudBottom}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${(o.pair3Top||[]).slice(0,3).join(' • ')}\n\nเบิ้ล ${o.doubleChance}%\nเฝ้า ${(o.doubleWatch||[]).join(' • ')}\nDrift ${o.driftScore}% • ${o.baseWeight}/${o.recentWeight}`;
+  const pair3=(o.pair3Top||[]).slice(0,3).join(' • ');
+  const doubleWatch=(o.doubleWatch||[]).join(' • ');
+  const text=`${currentMarket?.market_name||''}\n\nWIN6 ${o.win6}\nรูดหลัก ${o.rudTop} • รูดรอง ${o.rudBottom}\n\nเจาะ 2\n${pair2}\n\nเจาะ 3\n${pair3}\n\nเบิ้ล ${o.doubleChance ?? 0}%\nเฝ้าเบิ้ล ${doubleWatch}\n\nDrift ${o.driftScore ?? 0}% • ${o.baseWeight ?? 100}/${o.recentWeight ?? 0}`;
   navigator.clipboard.writeText(text).then(()=>{if($('saveStatus'))$('saveStatus').textContent='คัดลอกแล้ว';});
 }
 
@@ -144,4 +171,5 @@ if($('marketSelect'))$('marketSelect').onchange=e=>loadHistory(e.target.value);
 if($('copyBtn'))$('copyBtn').onclick=copyOutput;
 if($('saveBtn'))$('saveBtn').onclick=saveSnapshots;
 hideLegacyMode();
+polishRudCards();
 loadMarkets();
