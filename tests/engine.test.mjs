@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {calculateFormulaSet,calculateVeltrix} from '../lib/veltrix-engine.js';
 import {enhanceVeltrixWithRud} from '../lib/rud-ai.js';
+import {applyWorldWinFusion,normalizeWorldWin} from '../lib/world-win.js';
 import {settlePrediction,buildErrorMemory} from '../lib/error-memory.js';
 
 const rows=[
@@ -63,6 +64,23 @@ test('linked RUD AI keeps primary and secondary inside final WIN6 while reserve 
   assert.notEqual(out.rudTop,out.rudBottom);
   assert.ok(!win.has(out.reserve7));
   assert.equal(out.rudAI?.relationshipLocked,true);
+  for(const pair of out.pair2Shared)for(const d of pair)assert.ok(win.has(d));
+  for(const triple of out.pair3Top)for(const d of triple)assert.ok(win.has(d));
+});
+
+test('World WIN fusion is assistive and keeps the linked lineage coherent',()=>{
+  assert.equal(normalizeWorldWin('112233789'),'123789');
+  const core=calculateVeltrix(rows,{targetDate:'2026-08-11'});
+  const fused=applyWorldWinFusion(core,'123789');
+  const out=enhanceVeltrixWithRud(rows,fused).A;
+  const win=new Set(out.win6);
+
+  assert.equal(out.worldWin,'123789');
+  assert.equal(out.fusionBonus?.worldWin?.forced,false);
+  assert.equal(win.size,6);
+  assert.ok(win.has(out.rudTop));
+  assert.ok(win.has(out.rudBottom));
+  assert.ok(!win.has(out.reserve7));
   for(const pair of out.pair2Shared)for(const d of pair)assert.ok(win.has(d));
   for(const triple of out.pair3Top)for(const d of triple)assert.ok(win.has(d));
 });
