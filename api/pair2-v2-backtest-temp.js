@@ -1,0 +1,125 @@
+import {db,json,allow} from '../lib/db.js';
+import {calculateVeltrix} from '../lib/veltrix-engine.js';
+import {enhanceVeltrixWithRud} from '../lib/rud-ai.js';
+
+const RUD_WEIGHTS=[1.15,1.15,1.35,1.35,1.30,.95,.82,.70,.60,.52];
+const clean=v=>String(v??'').replace(/\D/g,'');
+const top3=v=>clean(v).padStart(3,'0').slice(-3);
+const bottom2=v=>clean(v).padStart(2,'0').slice(-2);
+const chars=r=>`${top3(r.top3)}${bottom2(r.bottom2)}`;
+const canon=p=>[...String(p)].sort().join('');
+const pct=(a,b)=>b?Math.round(a*10000/b)/100:0;
+
+function positionProb(rows,pos,d){
+  let count=1,total=10;
+  rows.slice(0,5).forEach((r,i)=>{const w=1.5-.15*i;total+=w;if(chars(r)[pos]===d)count+=w;});
+  return count/total;
+}
+function exactKeys(r){return [canon(top3(r.top3).slice(-2)),canon(bottom2(r.bottom2))];}
+function hasDoubleRecent(rows,d){return rows.slice(0,5).some(r=>top3(r.top3).includes(d+d)||bottom2(r.bottom2)===d+d);}
+function dna35(rows,key){
+  const idx=[2,3,4],ws=[1.35,1.35,1.30];let hit=0,total=0;
+  idx.forEach((ri,j)=>{if(!rows[ri])return;const w=ws[j];total+=w;if(exactKeys(rows[ri]).includes(key))hit+=w;});
+  return total?hit/total:0;
+}
+function transitionDNA(rows,key){
+  let hit=.08,total=.8;
+  for(let k=1;k<Math.min(rows.length,11);k++){
+    const w=RUD_WEIGHTS[k-1],sourceKeys=exactKeys(rows[k]),targetKeys=exactKeys(rows[k-1]);
+    if(sourceKeys.includes(key)){
+      total+=w;
+      if(targetKeys.includes(key))hit+=w;
+    }
+  }
+  return hit/total;
+}
+function rudRelation(key,primary,secondary){
+  if(key===canon(`${primary}${secondary}`))return 1;
+  let s=0;if(key.includes(primary))s+=.65;if(key.includes(secondary))s+=.45;return Math.min(1,s);
+}
+function buildCandidates(rows,win6,primary,secondary){
+  const byKey=new Map();
+  for(const a of win6)for(const b of win6){
+    if(a===b&&!hasDoubleRecent(rows,a))continue;
+    const key=canon(a+b),pos=positionProb(rows,1,a)*positionProb(rows,2,b)+positionProb(rows,3,a)*positionProb(rows,4,b);
+    const prev=byKey.get(key);
+    if(!prev||pos>prev.pos+1e-12||(Math.abs(pos-prev.pos)<=1e-12&&(a+b).localeCompare(prev.p)<0))byKey.set(key,{key,p:a+b,pos});
+  }
+  const c=[...byKey.values()],mx=Math.max(1e-9,...c.map(x=>x.pos));
+  for(const x of c){x.posN=x.pos/mx;x.dna=dna35(rows,x.key);x.transition=transitionDNA(rows,x.key);x.rud=rudRelation(x.key,primary,secondary);}
+  return c;
+}
+function selectV2(candidates,w){
+  const pool=candidates.map(x=>({...x,base:x.posN+w.dna*x.dna+w.transition*x.transition+w.rud*x.rud}));
+  const out=[],used={};
+  while(out.length<5&&pool.length){
+    let bestIndex=0,bestScore=-Infinity;
+    for(let i=0;i<pool.length;i++){
+      const x=pool[i],penalty=w.diversity*((used[x.key[0]]||0)+(used[x.key[1]]||0)),score=x.base-penalty;
+      if(score>bestScore+1e-12||(Math.abs(score-bestScore)<=1e-12&&x.p.localeCompare(pool[bestIndex]?.p||'99')<0)){bestScore=score;bestIndex=i;}
+    }
+    const [x]=pool.splice(bestIndex,1);out.push(x.p);for(const d of x.key)used[d]=(used[d]||0)+1;
+  }
+  return out;
+}
+function hit(pairs,key){return pairs.some(p=>canon(p)===key);}
+function emptyMetric(){return {cases:0,top:0,bottom:0,any:0,both:0};}
+function addMetric(m,pairs,topKey,bottomKey){const t=hit(pairs,topKey),b=hit(pairs,bottomKey);m.cases++;if(t)m.top++;if(b)m.bottom++;if(t||b)m.any++;if(t&&b)m.both++;}
+function shape(m){return {...m,topPct:pct(m.top,m.cases),bottomPct:pct(m.bottom,m.cases),anyPct:pct(m.any,m.cases),bothPct:pct(m.both,m.cases)};}
+function evalCases(cases,weights,filter=()=>true,which='v2'){
+  const m=emptyMetric();
+  for(const x of cases){if(!filter(x))continue;const pairs=which==='v1'?x.v1:selectV2(x.candidates,weights);addMetric(m,pairs,x.topKey,x.bottomKey);}
+  return m;
+}
+function better(a,b){
+  if(a.any!==b.any)return a.any>b.any;
+  if(a.top+a.bottom!==b.top+b.bottom)return a.top+a.bottom>b.top+b.bottom;
+  if(a.both!==b.both)return a.both>b.both;
+  return false;
+}
+
+export default async function handler(req,res){
+  allow(res,'GET');if(req.method!=='GET')return json(res,405,{error:'Method not allowed'});
+  try{
+    // Read-only. Intentionally DO NOT call applyWorldWinFusion().
+    const all=await db('veltrix_latest_20?select=market_id,market_key,market_name,draw_date,top3,bottom2,rn&order=market_id.asc,rn.asc&limit=2000');
+    const by=new Map();for(const r of all||[]){if(!by.has(r.market_id))by.set(r.market_id,[]);by.get(r.market_id).push(r);}
+    const cases=[];
+    for(const rs0 of by.values()){
+      const rs=[...rs0].sort((a,b)=>Number(a.rn)-Number(b.rn));
+      for(let i=0;i<rs.length-5;i++){
+        const target=rs[i],hist=rs.slice(i+1);if(hist.length<5)continue;
+        const core=calculateVeltrix(hist,{targetDate:target.draw_date});
+        // No World WIN fusion here: core -> RUD-FIRST/output specialists directly.
+        const outputs=enhanceVeltrixWithRud(hist,core),p=outputs?.A||Object.values(outputs||{})[0];if(!p)continue;
+        const win6=[...String(p.win6||'')],primary=String(p.rudTop||p.rud2?.[0]||win6[0]||''),secondary=String(p.rudBottom||p.rud2?.[1]||win6[1]||'');
+        const v1=(p.pair2Shared||p.pair2Top||[]).slice(0,5),candidates=buildCandidates(hist,win6,primary,secondary);
+        if(v1.length<5||candidates.length<5)continue;
+        cases.push({marketId:target.market_id,marketName:target.market_name||target.market_key||target.market_id,rn:Number(target.rn),drawDate:target.draw_date,topKey:canon(top3(target.top3).slice(-2)),bottomKey:canon(bottom2(target.bottom2)),v1,candidates});
+      }
+    }
+    const train=x=>x.rn>5,valid=x=>x.rn<=5;
+    const grid={dna:[0,.05,.10,.15,.20,.30],transition:[0,.05,.10,.15,.20],rud:[0,.02,.04,.06,.08,.10],diversity:[0,.01,.02,.03,.05]};
+    let best=null;
+    for(const dna of grid.dna)for(const transition of grid.transition)for(const rud of grid.rud)for(const diversity of grid.diversity){
+      const weights={dna,transition,rud,diversity},m=evalCases(cases,weights,train,'v2');
+      if(!best||better(m,best.metric))best={weights,metric:m};
+    }
+    const zero={dna:0,transition:0,rud:0,diversity:0};
+    const v1Train=evalCases(cases,zero,train,'v1'),v1Valid=evalCases(cases,zero,valid,'v1'),v1All=evalCases(cases,zero,()=>true,'v1');
+    const v2Train=evalCases(cases,best.weights,train,'v2'),v2Valid=evalCases(cases,best.weights,valid,'v2'),v2All=evalCases(cases,best.weights,()=>true,'v2');
+    let marketWins=0,marketLosses=0,marketTies=0;
+    for(const id of by.keys()){
+      const f=x=>x.marketId===id&&valid(x),a=evalCases(cases,zero,f,'v1'),b=evalCases(cases,best.weights,f,'v2');
+      if(b.any>a.any)marketWins++;else if(b.any<a.any)marketLosses++;else marketTies++;
+    }
+    return json(res,200,{
+      ok:true,read_only:true,world_win:false,method:'walk_forward_occurrence_based',markets:by.size,targets:cases.length,
+      split:{training:'rn 6-15 (older)',validation:'rn 1-5 (latest)'},
+      champion:{name:'PAIR2_POSITION_SPECIALIST_V1',training:shape(v1Train),validation:shape(v1Valid),all:shape(v1All)},
+      challenger:{name:'PAIR2_DNA_RUD_DIVERSITY_V2_NO_WORLD',selectedWeights:best.weights,training:shape(v2Train),validation:shape(v2Valid),all:shape(v2All),validationMarketComparison:{wins:marketWins,losses:marketLosses,ties:marketTies}},
+      deltaValidation:{top:v2Valid.top-v1Valid.top,bottom:v2Valid.bottom-v1Valid.bottom,any:v2Valid.any-v1Valid.any,both:v2Valid.both-v1Valid.both},
+      decision:v2Valid.any>v1Valid.any?'V2_WINS':v2Valid.any<v1Valid.any?'V1_WINS':'TIE_ON_ANY'
+    });
+  }catch(e){return json(res,500,{error:e.message,stack:String(e.stack||'').split('\n').slice(0,4)});}
+}
