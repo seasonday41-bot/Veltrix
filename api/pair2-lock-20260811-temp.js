@@ -7,13 +7,19 @@ import {buildPair2ForwardBattle,PAIR2_BATTLE_VERSION} from '../lib/pair2-forward
 
 const TARGET_DATE='2026-08-11';
 const ENGINE_VERSION='adaptive_v17';
+function chunks(a,n){const out=[];for(let i=0;i<a.length;i+=n)out.push(a.slice(i,i+n));return out;}
+async function loadAllHistory(){
+  const markets=await db('veltrix_markets?select=id&active=eq.true&order=market_key.asc');
+  const ids=(markets||[]).map(x=>x.id),parts=await Promise.all(chunks(ids,30).map(xs=>db(`veltrix_latest_20?select=id,market_id,market_key,market_name,draw_date,top3,bottom2,rn&market_id=in.(${xs.join(',')})&order=market_id.asc,rn.asc&limit=1000`)));
+  return parts.flat();
+}
 
 export default async function handler(req,res){
   allow(res,'GET');
   if(req.method!=='GET')return json(res,405,{error:'Method not allowed'});
   try{
     const [historyRows,worldRows]=await Promise.all([
-      db('veltrix_latest_20?select=id,market_id,market_key,market_name,draw_date,top3,bottom2,rn&order=market_id.asc,rn.asc&limit=2000'),
+      loadAllHistory(),
       db('veltrix_engine_settings?select=setting_value&setting_key=eq.daily_win_global&limit=1')
     ]);
     const worldWin=normalizeWorldWin(worldRows?.[0]?.setting_value?.digits||'');
@@ -36,5 +42,6 @@ export default async function handler(req,res){
     }
     if(rowsToInsert.length)await db('veltrix_pair2_forward_battle',{method:'POST',prefer:'resolution=ignore-duplicates,return=minimal',body:rowsToInsert});
     return json(res,200,{ok:true,temporary:true,target_date:TARGET_DATE,world_win:worldWin,battle_version:PAIR2_BATTLE_VERSION,markets_seen:by.size,markets_locked:marketsLocked,rows_attempted:rowsToInsert.length,skipped});
-  }catch(e){return json(res,500,{error:e.message,detail:e.data||null});}
+  }catch(e){return json(res,500,{error:e.message,detail:e.data||null});
+  }
 }
