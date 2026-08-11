@@ -15,31 +15,24 @@ export default async function handler(req,res){
   if(req.method!=='GET')return json(res,405,{error:'Method not allowed'});
   try{
     const all=await db(`veltrix_latest_20?select=market_id,market_key,market_name,draw_date,top3,bottom2,rn&market_key=in.(${KEYS.join(',')})&order=market_id.asc,rn.asc&limit=300`);
-    const by=new Map();
-    for(const r of all||[]){if(!by.has(r.market_id))by.set(r.market_id,[]);by.get(r.market_id).push(r);}
-    const total=Object.fromEntries(VARIANTS.map(v=>[v,bucket()]));
-    const markets=[];
+    const by=new Map();for(const r of all||[]){if(!by.has(r.market_id))by.set(r.market_id,[]);by.get(r.market_id).push(r);}
+    const total=Object.fromEntries(VARIANTS.map(v=>[v,bucket()])),markets=[];
     for(const rs0 of by.values()){
       const rs=[...rs0].sort((a,b)=>Number(a.rn)-Number(b.rn));
       const sums=Object.fromEntries(VARIANTS.map(v=>[v,bucket()]));
-      const cases=[];
+      const rescue={b_gain:0,b_loss:0,c_gain:0,c_loss:0};
       for(let i=0;i<rs.length-5;i++){
-        const target=rs[i],hist=rs.slice(i+1);
-        if(hist.length<5)continue;
-        const core=calculateVeltrix(hist,{targetDate:target.draw_date});
-        const out=enhanceVeltrixWithRud(hist,core);
-        const p=out?.A||Object.values(out||{})[0];
-        if(!p)continue;
-        const battle=buildPair2ForwardBattle(hist,p,'');
-        if(!battle)continue;
-        const settled=settlePair2ForwardBattle(battle.variants,target);
-        const row={date:target.draw_date,actual:`${target.top3}-${target.bottom2}`,win6:battle.win6,reserve7:battle.reserve7,variants:{}};
-        for(const v of VARIANTS){const h=settled.results?.[v];add(sums[v],h);add(total[v],h);row.variants[v]={pairs:battle.variants?.[v]?.pairs||[],hit:h};}
-        cases.push(row);
+        const target=rs[i],hist=rs.slice(i+1);if(hist.length<5)continue;
+        const core=calculateVeltrix(hist,{targetDate:target.draw_date}),out=enhanceVeltrixWithRud(hist,core),p=out?.A||Object.values(out||{})[0];if(!p)continue;
+        const battle=buildPair2ForwardBattle(hist,p,'');if(!battle)continue;
+        const settled=settlePair2ForwardBattle(battle.variants,target),r=settled.results||{};
+        for(const v of VARIANTS){add(sums[v],r[v]);add(total[v],r[v]);}
+        if(r.v21_b?.any&&!r.v21_a?.any)rescue.b_gain++; if(r.v21_a?.any&&!r.v21_b?.any)rescue.b_loss++;
+        if(r.v21_c?.any&&!r.v21_a?.any)rescue.c_gain++; if(r.v21_a?.any&&!r.v21_c?.any)rescue.c_loss++;
       }
-      markets.push({market_key:rs[0]?.market_key,market_name:rs[0]?.market_name,cases:cases.length,summary:Object.fromEntries(VARIANTS.map(v=>[v,shape(sums[v])])),detail:cases});
+      markets.push({market_key:rs[0]?.market_key,market_name:rs[0]?.market_name,cases:sums.v21_a.cases,A:shape(sums.v21_a),B:shape(sums.v21_b),C:shape(sums.v21_c),reserve_effect:rescue});
     }
     markets.sort((a,b)=>KEYS.indexOf(a.market_key)-KEYS.indexOf(b.market_key));
-    return json(res,200,{ok:true,temporary:true,read_only:true,world_win:false,note:'Historical walk-forward: current daily World WIN is not reused in past dates. A=WIN6 only, B=4 WIN6+1 Reserve7, C=3 WIN6+2 Reserve7.',selected_keys:KEYS,markets_count:markets.length,total:Object.fromEntries(VARIANTS.map(v=>[v,shape(total[v])])),markets});
+    return json(res,200,{ok:true,temporary:true,read_only:true,world_win:false,note:'Walk-forward historical only; A=WIN6 only, B=4 WIN6+1 Reserve7, C=3 WIN6+2 Reserve7.',total:{A:shape(total.v21_a),B:shape(total.v21_b),C:shape(total.v21_c)},markets});
   }catch(e){return json(res,500,{error:e.message,detail:e.data||null});}
 }
