@@ -36,7 +36,7 @@ Historical results
 - รูดหลัก and รูดรอง must be different.
 - RUD AI learns independently from market history; it is not merely `win6.slice(0,2)` by origin. In v17 it selects first, then WIN6 is built around those 2 digits.
 - Central WIN ranking fills only the remaining 4 WIN6 positions.
-- Pair2, Pair3 and Double Watch may use only digits inside FINAL WIN6.
+- Production Pair2, Pair3 and Double Watch may use only digits inside FINAL WIN6.
 - Reserve is the only seventh support digit and must stay outside FINAL WIN6.
 - No random selection.
 
@@ -52,6 +52,8 @@ Historical results
 ```
 
 Transitions 3-5 intentionally carry the strongest weight.
+
+When loading many markets through PostgREST, history must be batched (currently 30 markets/request) so the 1000-row API cap cannot silently truncate a 60-market run.
 
 ## 3. Locked formula reference
 
@@ -176,7 +178,46 @@ PAIR3_FORMULA_PRIORITY_SPECIALIST_V1
 DOUBLE_BALANCED_SPECIALIST_V1
 ```
 
-Pair2 = 5 sets, Pair3 = 3 sets, Double Watch = 3 digits. Every output digit must belong to the same FINAL WIN6.
+Pair2 = 5 sets, Pair3 = 3 sets, Double Watch = 3 digits. Every production output digit must belong to the same FINAL WIN6.
+
+### Pair2 experimental challenger / Reserve battle
+
+Production Pair2 remains `PAIR2_POSITION_SPECIALIST_V1`. Do not replace customer output yet.
+
+Current Pair2 challenger:
+
+```text
+PAIR2_V21_EXACT_DNA_3_5
+alpha = 0.25
+score = 75% V1 position score + 25% exact Pair DNA from occurrences 3-5
+```
+
+Historical no-World reference used only to select the challenger: 50 markets / 750 walk-forward cases, V1 any-side hit `137/750 = 18.27%`, V2.1 `147/750 = 19.60%`. This is a historical reference, not a guarantee and not the current Forward policy.
+
+Live Forward battle begins **2026-08-11** with **World WIN enabled equally for V1 and V2.1**. Each target date freezes that day's World WIN, fused WIN6 and Reserve7 before the actual result is inserted.
+
+Battle label:
+
+```text
+PAIR2_WORLD_WIN_RESERVE_BATTLE_V1
+```
+
+Six variants are locked per market/mode:
+
+```text
+v1_a  = V1, 5 pairs from WIN6 only
+v1_b  = V1, 4 WIN6 pairs + 1 best Reserve7 pair
+v1_c  = V1, 3 WIN6 pairs + up to 2 best Reserve7 pairs
+v21_a = V2.1, 5 pairs from WIN6 only
+v21_b = V2.1, 4 WIN6 pairs + 1 best Reserve7 pair
+v21_c = V2.1, 3 WIN6 pairs + up to 2 best Reserve7 pairs
+```
+
+A/B/C differ only in Pair2 selection. They use the same World-WIN-fused prediction state. Reserve pairs are experimental only; they do **not** change the production rule that customer Pair2 must stay inside FINAL WIN6.
+
+Forward settlement measures 2-top, 2-bottom, any side and both sides. Daily comparison uses Mode A by default. Do not promote V2.1 or Reserve B/C to production from a single day; accumulate true forward results first.
+
+Initial 2026-08-11 lock: 60 markets, 120 rows (Mode A 60 + Mode B 60), World WIN frozen as `9631275`.
 
 ## 9. Approved v17 walk-forward comparison
 
@@ -225,6 +266,8 @@ AUTO LOCK must occur before inserting the incoming actual result.
 
 Settlement stores WIN6 coverage, missing/false-positive digits, Reserve rescue, RUD results, Pair2/Pair3 results, double event/watch result, Drift, Base/Recent weights, formulas, specialist metadata and `rud_first` metadata.
 
+Pair2 Forward Battle is separately locked before actual insertion and automatically settled by a Supabase result-insert trigger. Deleting an actual result resets the linked battle settlement without deleting the pre-result locked battle row.
+
 ## 11. Historical Backfill known gap
 
 `api/backfill-learning.js` still does not fully reproduce the current production chain. Do not report old Backfill as a complete v17 reproduction.
@@ -262,6 +305,8 @@ Do not show internal engine-status text such as Adaptive/RUD AI/Reserve Challeng
 
 LINE copy includes WIN6/Reserve, รูดหลัก, รูดรอง, เจาะ2, เจาะ3, เบิ้ล %, เฝ้าเบิ้ล 3 digits and Drift/weight.
 
+Pair2 Forward Battle A/B/C is internal experimental data and must not appear in the customer UI until explicitly promoted.
+
 ## 13. Supabase
 
 Core isolated objects:
@@ -276,7 +321,11 @@ veltrix_forward_audit
 veltrix_engine_settings
 veltrix_latest_20
 veltrix_latest_10
+veltrix_pair2_forward_battle
+veltrix_pair2_forward_daily
 ```
+
+`veltrix_pair2_forward_battle` stores immutable pre-result A/B/C Pair2 locks plus later settlement. `veltrix_pair2_forward_daily` is the Mode-A daily summary view.
 
 Server-only environment variables:
 
@@ -295,12 +344,16 @@ Never expose the service-role key in browser JavaScript or GitHub.
 - WIN6 second digit = RUD secondary
 - RUD primary != secondary
 - Reserve outside WIN6
-- Pair2 digits inside WIN6
+- production Pair2 digits inside WIN6
 - Pair3 digits inside WIN6
 - Double Watch digits inside WIN6
 - World WIN assistive only / not forced
+- Pair2 Forward V1 and V2.1 use the same World-WIN-fused WIN6/Reserve state
+- Pair2 Forward A uses WIN6 only; B/C may use Reserve7 only in the experimental table
+- Pair2 Forward lock must happen before actual result insertion
 - AUTO and manual Snapshot both use `adaptive_v17`
 - Error Memory reads v17 > v16 > v15 > v15_backfill
+- 60-market history loads must not truncate at PostgREST 1000 rows
 - no future leakage
 - no random output
 
