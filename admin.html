@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#02070d" />
+  <meta name="color-scheme" content="dark" />
+  <title>VELTRIX Admin</title>
+  <style>
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;min-height:100%;background:#02070d;color:#f4fbff;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+    body{min-height:100vh;display:grid;place-items:center;padding:20px;background-image:radial-gradient(circle at 14% 7%,rgba(73,72,220,.28),transparent 28%),radial-gradient(circle at 86% 24%,rgba(0,154,220,.20),transparent 34%),linear-gradient(180deg,#02070d,#05051a 50%,#02070d)}
+    .wrap{width:min(100%,460px)}
+    .brand{text-align:center;margin-bottom:20px}.brand h1{margin:0;font-size:46px;letter-spacing:7px;font-weight:900;background:linear-gradient(180deg,#fff,#bfeaff 58%,#7d71ff);-webkit-background-clip:text;color:transparent}.brand p{margin:9px 0 0;color:#9fb7ca;letter-spacing:2px;font-size:12px}
+    .card{border:1px solid rgba(103,178,255,.48);border-radius:22px;padding:20px;background:linear-gradient(180deg,rgba(7,24,43,.90),rgba(4,11,24,.93));box-shadow:0 22px 50px rgba(0,0,0,.44),0 0 26px rgba(88,86,255,.13)}
+    .title{font-size:20px;font-weight:800;margin-bottom:6px}.note{font-size:13px;line-height:1.55;color:#9fb5c8;margin-bottom:15px}
+    input{width:100%;height:54px;border-radius:15px;border:1px solid rgba(103,181,235,.50);background:rgba(2,12,22,.88);color:#fff;padding:0 15px;font-size:17px;outline:none}input:focus{border-color:#64d6ff;box-shadow:0 0 18px rgba(80,194,255,.17)}
+    button{width:100%;min-height:54px;margin-top:11px;border-radius:15px;border:1px solid #66d8ff;background:linear-gradient(180deg,rgba(16,107,166,.96),rgba(5,64,105,.96));color:#effcff;font-size:16px;font-weight:850}button:disabled{opacity:.45}
+    .status{min-height:20px;margin-top:10px;font-size:13px;line-height:1.45;color:#9fb5c8}.bad{color:#ff9aa8}.good{color:#72e5ff}
+    .back{display:block;text-align:center;margin-top:16px;color:#9fcde5;text-decoration:none;font-size:13px}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="brand"><h1>VELTRIX</h1><p>PRIVATE ADMIN</p></header>
+    <section class="card">
+      <div class="title">เข้าสู่ระบบ Admin</div>
+      <div class="note">หน้านี้ใช้สำหรับลงผล, วินรอบโลก, AUTO LOCK, Snapshot และ Error Memory เท่านั้น</div>
+      <input id="adminPassword" type="password" autocomplete="current-password" placeholder="รหัสผ่าน Admin" />
+      <button id="adminLoginBtn" type="button">เข้าสู่ระบบ</button>
+      <div id="adminStatus" class="status">กำลังตรวจสถานะ...</div>
+    </section>
+    <a class="back" href="/">← กลับหน้า Engine</a>
+  </main>
+  <script type="module" src="/admin-login.js?v=20260812-1"></script>
+</body>
+</html>

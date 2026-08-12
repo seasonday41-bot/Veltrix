@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {db,json,allow} from './_db.js';
 import {ensureAutoSnapshots} from '../lib/auto-snapshot.js';
 import {settlePrediction,ERROR_MEMORY_VERSIONS} from '../lib/error-memory.js';
+import {requireAdmin} from '../lib/admin-auth.js';
 
 const THAI_MONTHS={
   'มกราคม':1,'ม.ค.':1,'ม.ค':1,'กุมภาพันธ์':2,'ก.พ.':2,'ก.พ':2,'มีนาคม':3,'มี.ค.':3,'มี.ค':3,
@@ -120,6 +121,7 @@ function audit(snapshot,actual,input){
 export default async function handler(req,res){
   allow(res,'POST');
   if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
+  if(!requireAdmin(req,res))return;
   try{
     const raw=String(req.body?.raw_text||'').trim(); const dry=Boolean(req.body?.dry_run);
     if(!raw)return json(res,400,{error:'ยังไม่มีข้อความผลให้ตรวจ'});

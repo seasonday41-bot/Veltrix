@@ -1,4 +1,5 @@
 import {db,json,allow} from '../lib/db.js';
+import {requireAdmin} from '../lib/admin-auth.js';
 
 function thaiTodayISO(){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -14,6 +15,7 @@ function normalizeDigits(value=''){
 export default async function handler(req,res){
   allow(res,'GET, POST');
   if(!['GET','POST'].includes(req.method))return json(res,405,{error:'Method not allowed'});
+  if(req.method==='POST'&&!requireAdmin(req,res))return;
   try{
     const today=thaiTodayISO();
     const rows=await db('veltrix_engine_settings?select=id,setting_value,updated_at&setting_key=eq.daily_win_global&limit=1');

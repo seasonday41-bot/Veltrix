@@ -73,6 +73,11 @@ function installVisualPolish(){
     }
     .section-icon,.number-icon,.metric-icon{filter:drop-shadow(0 0 8px rgba(132,83,255,.35))}
 
+    /* Customer build: admin controls are not exposed in the public Engine UI. */
+    #worldWinCard,#saveBtn,#saveStatus{display:none!important}
+    .footer-nav .nav-btn[href="/results.html"]{display:none!important}
+    .footer-nav .inner{grid-template-columns:1fr!important}
+
     /* Pair3 display only: keep all five 3-digit picks on one iPhone-width line. */
     .number-card.three .number-lines{
       padding-left:48px!important;

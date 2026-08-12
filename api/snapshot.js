@@ -1,6 +1,7 @@
 import {db,json,allow} from '../lib/db.js';
 import {normalizeWorldWin} from '../lib/world-win.js';
 import {buildPair2ForwardBattle,PAIR2_BATTLE_VERSION} from '../lib/pair2-forward-battle.js';
+import {requireAdmin} from '../lib/admin-auth.js';
 
 const ENGINE_VERSION='adaptive_v17';
 const BATTLE_CONFLICT='market_id,source_result_id,target_date,mode,engine_version,battle_version';
@@ -14,6 +15,7 @@ function rowFromPrediction(marketId,sourceId,p){
 }
 export default async function handler(req,res){
   allow(res,'POST');if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
+  if(!requireAdmin(req,res))return;
   try{
     const {market_id,source_result_id,predictions}=req.body||{};
     if(!market_id||!source_result_id||!Array.isArray(predictions))return json(res,400,{error:'ข้อมูล Snapshot ไม่ครบ'});

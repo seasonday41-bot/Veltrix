@@ -1,6 +1,7 @@
 import {db,json,allow} from '../lib/db.js';
 import {calculateVeltrix} from '../lib/veltrix-engine.js';
 import {buildErrorMemory,settlePrediction,ERROR_MEMORY_VERSIONS} from '../lib/error-memory.js';
+import {requireAdmin} from '../lib/admin-auth.js';
 
 const VERSION=ERROR_MEMORY_VERSIONS.backfill;
 const MODE='A';
@@ -126,6 +127,7 @@ function overall(details){
 export default async function handler(req,res){
   allow(res,'POST');
   if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
+  if(!requireAdmin(req,res))return;
   try{
     const body=req.body||{};
     if(body.confirm!=='VELTRIX_BACKFILL_V14')return json(res,400,{error:'ต้องส่ง confirm=VELTRIX_BACKFILL_V14'});
