@@ -32,7 +32,7 @@ export default async function handler(req,res){
       if(battle&&p.targetDate){
         battleRows.push({market_id,source_result_id,target_date:p.targetDate,mode:p.mode,engine_version:ENGINE_VERSION,battle_version:PAIR2_BATTLE_VERSION,world_win:worldWin,win6:battle.win6,reserve7:battle.reserve7,variants:battle.variants});
       }
-      if(!locked.has(p.mode))rows.push(rowFromPrediction(marketId=market_id,sourceId=source_result_id,{...p,pair2ForwardBattle:battle}));
+      if(!locked.has(p.mode))rows.push(rowFromPrediction(market_id,source_result_id,{...p,pair2ForwardBattle:battle}));
     }
     if(rows.length)await db('veltrix_prediction_snapshots',{method:'POST',body:rows,prefer:'return=minimal'});
     if(battleRows.length)await db(`veltrix_pair2_forward_battle?on_conflict=${BATTLE_CONFLICT}`,{method:'POST',body:battleRows,prefer:'resolution=ignore-duplicates,return=minimal'});
