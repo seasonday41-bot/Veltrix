@@ -1,3 +1,4 @@
+// Preview redeploy marker: admin environment variables loaded after setup.
 const password=document.getElementById('adminPassword');
 const button=document.getElementById('adminLoginBtn');
 const status=document.getElementById('adminStatus');
