@@ -79,3 +79,5 @@ splitHistoryRows();
 if(historyListFix){
   new MutationObserver(()=>splitHistoryRows()).observe(historyListFix,{childList:true,subtree:true});
 }
+
+import('./punk-theme.js?v=20260812-1');
