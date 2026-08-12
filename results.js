@@ -1,5 +1,34 @@
+document.documentElement.style.visibility='hidden';
+
 const $=id=>document.getElementById(id);
 let lastPreview=null,lastMemoryDryRun=null;
+
+async function ensureAdminSession(){
+  try{
+    const r=await fetch('/api/admin-session',{cache:'no-store'}),j=await r.json();
+    if(!r.ok||!j.authenticated){location.replace('/admin.html');return false;}
+    document.documentElement.style.visibility='visible';
+    installAdminChrome();
+    return true;
+  }catch{
+    location.replace('/admin.html');
+    return false;
+  }
+}
+
+function installAdminChrome(){
+  if(document.getElementById('adminLogoutBtn'))return;
+  const btn=document.createElement('button');
+  btn.id='adminLogoutBtn';
+  btn.type='button';
+  btn.textContent='ออกจาก Admin';
+  btn.style.cssText='position:fixed;right:12px;top:calc(10px + env(safe-area-inset-top));z-index:99;border:1px solid rgba(100,190,245,.45);border-radius:999px;background:rgba(2,13,22,.90);color:#cfefff;padding:9px 13px;font-size:12px;font-weight:800;box-shadow:0 8px 22px rgba(0,0,0,.28)';
+  btn.onclick=async()=>{
+    btn.disabled=true;
+    try{await fetch('/api/admin-session',{method:'DELETE'});}finally{location.replace('/admin.html');}
+  };
+  document.body.appendChild(btn);
+}
 
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function pct(v){return `${((Number(v)||0)*100).toFixed(1)}%`;}
@@ -38,6 +67,7 @@ async function runMemory(dryRun){
       body:JSON.stringify({confirm:'VELTRIX_BACKFILL_V14',dry_run:dryRun})
     });
     const j=await r.json();
+    if(r.status===401){location.replace('/admin.html');return;}
     if(!r.ok)throw new Error(j.error||'ทำ Error Memory ไม่สำเร็จ');
     renderMemorySummary(j);
     if(dryRun){
@@ -80,6 +110,7 @@ async function saveDailyWin(){
   $('dailyWinStatus').textContent='กำลังบันทึกวินประจำวัน Global...';
   try{
     const r=await fetch('/api/daily-win',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({digits})}),j=await r.json();
+    if(r.status===401){location.replace('/admin.html');return;}
     if(!r.ok)throw new Error(j.error||'บันทึกวินประจำวันไม่ได้');
     $('dailyWinStatus').textContent=digits?`บันทึกแล้ว • ใช้ทั้ง 60 ตลาดตลอดวันที่ ${j.date} • วิน ${digits}`:`ล้างวินประจำวันแล้ว • วันที่ ${j.date} ไม่มีโบนัสวินประจำวัน`;
     $('dailyWinStatus').className=`status ${digits?'good':'muted'}`;
@@ -111,7 +142,9 @@ async function inspect(){
   $('checkBtn').disabled=true; $('checkBtn').textContent='กำลังตรวจ...';
   try{
     const r=await fetch('/api/import-results',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({raw_text,dry_run:true})});
-    const j=await r.json(); if(!r.ok)throw new Error(j.error||'ตรวจข้อมูลไม่ได้'); renderPreview(j);
+    const j=await r.json();
+    if(r.status===401){location.replace('/admin.html');return;}
+    if(!r.ok)throw new Error(j.error||'ตรวจข้อมูลไม่ได้'); renderPreview(j);
   }catch(e){ $('saveResultStatus').textContent=e.message; }
   finally{$('checkBtn').disabled=false;$('checkBtn').textContent='ตรวจข้อมูล';}
 }
@@ -121,7 +154,9 @@ async function save(){
   $('saveResultsBtn').disabled=true; $('saveResultStatus').textContent='กำลัง AUTO LOCK → บันทึกผล → Settlement → Error Memory...';
   try{
     const r=await fetch('/api/import-results',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({raw_text,dry_run:false})});
-    const j=await r.json(); if(!r.ok)throw new Error(j.error||'บันทึกไม่ได้'); renderPreview(j);
+    const j=await r.json();
+    if(r.status===401){location.replace('/admin.html');return;}
+    if(!r.ok)throw new Error(j.error||'บันทึกไม่ได้'); renderPreview(j);
     const settled=j.settled_count||0;
     const autoMarkets=j.auto_locked_market_count||0;
     const autoSnapshots=j.auto_locked_snapshot_count||0;
@@ -131,10 +166,15 @@ async function save(){
   finally{$('saveResultsBtn').disabled=false;}
 }
 
-if($('memoryDryBtn'))$('memoryDryBtn').onclick=()=>runMemory(true);
-if($('memoryBuildBtn'))$('memoryBuildBtn').onclick=()=>runMemory(false);
-if($('dailyWinInput'))$('dailyWinInput').addEventListener('input',e=>{e.target.value=cleanDailyWin(e.target.value);});
-if($('saveDailyWinBtn'))$('saveDailyWinBtn').onclick=saveDailyWin;
-$('checkBtn').onclick=inspect;
-$('saveResultsBtn').onclick=save;
-loadDailyWin();
+async function bootstrapAdmin(){
+  if(!await ensureAdminSession())return;
+  if($('memoryDryBtn'))$('memoryDryBtn').onclick=()=>runMemory(true);
+  if($('memoryBuildBtn'))$('memoryBuildBtn').onclick=()=>runMemory(false);
+  if($('dailyWinInput'))$('dailyWinInput').addEventListener('input',e=>{e.target.value=cleanDailyWin(e.target.value);});
+  if($('saveDailyWinBtn'))$('saveDailyWinBtn').onclick=saveDailyWin;
+  if($('checkBtn'))$('checkBtn').onclick=inspect;
+  if($('saveResultsBtn'))$('saveResultsBtn').onclick=save;
+  loadDailyWin();
+}
+
+bootstrapAdmin();
